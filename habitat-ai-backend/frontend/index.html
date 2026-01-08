@@ -603,8 +603,8 @@
             <h3 style="margin-bottom: 15px; color:var(--emerald-deep);">Edit Record</h3>
 
             <div class="input-group">
-                <label class="input-label">Species Name</label>
-                <input type="text" id="editDescription">
+                <label class="input-label">Your Notes</label>
+                <textarea id="editUserDescription" rows="2" placeholder="Your observation notes..."></textarea>
             </div>
 
             <div class="input-group">
@@ -699,7 +699,7 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\\'")}', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.userDescription || '').replace(/'/g, "\\'")  }', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="card-body">
@@ -895,20 +895,20 @@
         }
 
         // EDIT & DELETE
-        function openEdit(id, desc, loc) {
+        function openEdit(id, userDesc, loc) {
             document.getElementById('editId').value = id;
-            document.getElementById('editDescription').value = desc;
+            document.getElementById('editUserDescription').value = userDesc || '';
             document.getElementById('editLocation').value = loc;
             document.getElementById('editModal').style.display = 'flex';
         }
 
         async function saveEdit() {
             const id = document.getElementById('editId').value;
-            const newDesc = document.getElementById('editDescription').value;
+            const newUserDesc = document.getElementById('editUserDescription').value;
             const newLoc = document.getElementById('editLocation').value;
 
-            if (!newDesc || !newLoc) {
-                alert('Please fill in both fields');
+            if (!newLoc) {
+                alert('Please fill in the location');
                 return;
             }
 
@@ -919,7 +919,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         id: id,
-                        description: newDesc, 
+                        userDescription: newUserDesc || 'User Observation',
                         location: newLoc 
                     })
                 });
