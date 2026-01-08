@@ -533,7 +533,6 @@
     <div class="sidebar">
         <div style="font-size: 24px; color: white; margin-bottom: 30px;"><i class="fa-solid fa-leaf"></i></div>
         <div class="nav-btn active"><i class="fa-solid fa-map"></i></div>
-        <div class="nav-btn"><i class="fa-solid fa-images"></i></div>
 
         <div class="user-profile" id="loginBtn" onclick="window.location.href='/.auth/login/github'">
             <i class="fa-solid fa-user"></i>
@@ -755,6 +754,31 @@
                 // Calculate confidence percentage
                 const confidencePercent = Math.round((obs.aiData?.confidence || 0) * 100);
                 const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
+                
+                // Determine animal type and icon based on species description
+                const description = (obs.aiData?.description || '').toLowerCase();
+                let animalType = 'Unknown';
+                let animalIcon = 'fa-paw';
+                
+                if (description.includes('bird') || description.includes('eagle') || description.includes('hawk') || description.includes('owl') || description.includes('sparrow') || description.includes('robin') || description.includes('duck') || description.includes('goose') || description.includes('crow') || description.includes('raven')) {
+                    animalType = 'Bird';
+                    animalIcon = 'fa-dove';
+                } else if (description.includes('mammal') || description.includes('deer') || description.includes('fox') || description.includes('rabbit') || description.includes('squirrel') || description.includes('bear') || description.includes('wolf') || description.includes('cat') || description.includes('dog')) {
+                    animalType = 'Mammal';
+                    animalIcon = 'fa-otter';
+                } else if (description.includes('fish') || description.includes('salmon') || description.includes('trout') || description.includes('bass')) {
+                    animalType = 'Fish';
+                    animalIcon = 'fa-fish';
+                } else if (description.includes('reptile') || description.includes('snake') || description.includes('lizard') || description.includes('turtle') || description.includes('tortoise')) {
+                    animalType = 'Reptile';
+                    animalIcon = 'fa-dragon';
+                } else if (description.includes('amphibian') || description.includes('frog') || description.includes('toad') || description.includes('salamander')) {
+                    animalType = 'Amphibian';
+                    animalIcon = 'fa-frog';
+                } else if (description.includes('insect') || description.includes('butterfly') || description.includes('bee') || description.includes('beetle') || description.includes('ant')) {
+                    animalType = 'Insect';
+                    animalIcon = 'fa-bug';
+                }
 
                 // Build Card with enhanced AI display
                 const card = document.createElement('div');
@@ -772,6 +796,12 @@
                                 <i class="fa-solid fa-brain"></i> AI: ${confidencePercent}%
                             </span>
                             <span style="font-size:0.75rem; color:#9ca3af;">${new Date(obs.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="background: rgba(16,185,129,0.15); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: var(--fern-green); display: inline-flex; align-items: center; gap: 5px;">
+                                <i class="fa-solid ${animalIcon}"></i> ${animalType}
+                            </span>
                         </div>
                                         
                         <div class="species-name" style="margin-bottom: 8px;">

@@ -101,19 +101,40 @@ export async function EventGridProcessImage(event: EventGridEvent, context: Invo
                 const rawTags = analysis.tagsResult?.values?.map((t: any) => t.name.toLowerCase()) || [];
                 const caption = analysis.captionResult?.text || "Nature Observation";
 
-                // ENHANCED SPECIES CATALOGUE
-                const speciesList = ['stork', 'heron', 'eagle', 'hawk', 'owl', 'pigeon', 'swallow', 'swan', 'duck', 'goose', 'sparrow', 'robin', 'penguin', 'squirrel', 'deer', 'fox', 'butterfly', 'cat', 'dog', 'pufferfish'];
-                const detected = rawTags.find((t: string) => speciesList.includes(t));
+                // ENHANCED SPECIES CATALOGUE WITH CLASSIFICATION
+                const birdSpecies = ['stork', 'heron', 'eagle', 'hawk', 'owl', 'pigeon', 'swallow', 'swan', 'duck', 'goose', 'sparrow', 'robin', 'penguin', 'crow', 'raven', 'seagull', 'pelican', 'flamingo', 'peacock', 'parrot', 'woodpecker', 'kingfisher'];
+                const mammalSpecies = ['deer', 'fox', 'squirrel', 'rabbit', 'bear', 'wolf', 'cat', 'dog', 'elephant', 'lion', 'tiger', 'zebra', 'giraffe', 'monkey', 'otter', 'seal', 'dolphin', 'whale'];
+                const reptileSpecies = ['snake', 'lizard', 'turtle', 'tortoise', 'crocodile', 'alligator', 'iguana', 'gecko'];
+                const amphibianSpecies = ['frog', 'toad', 'salamander', 'newt'];
+                const fishSpecies = ['salmon', 'trout', 'bass', 'pufferfish', 'goldfish', 'shark', 'ray'];
+                const insectSpecies = ['butterfly', 'bee', 'beetle', 'ant', 'dragonfly', 'ladybug', 'moth', 'wasp'];
+                
+                const allSpecies = [...birdSpecies, ...mammalSpecies, ...reptileSpecies, ...amphibianSpecies, ...fishSpecies, ...insectSpecies];
+                const detected = rawTags.find((t: string) => allSpecies.includes(t));
+                
+                // Determine classification
+                let classification = '';
+                if (detected) {
+                    if (birdSpecies.includes(detected)) classification = 'Bird';
+                    else if (mammalSpecies.includes(detected)) classification = 'Mammal';
+                    else if (reptileSpecies.includes(detected)) classification = 'Reptile';
+                    else if (amphibianSpecies.includes(detected)) classification = 'Amphibian';
+                    else if (fishSpecies.includes(detected)) classification = 'Fish';
+                    else if (insectSpecies.includes(detected)) classification = 'Insect';
+                }
 
                 let finalDesc = caption;
-                if (detected) {
-                    finalDesc = `Species Detected: ${detected.charAt(0).toUpperCase() + detected.slice(1)} - ${caption}`;
+                if (detected && classification) {
+                    // Scientific species identification with classification
+                    finalDesc = `${classification} Species: ${detected.charAt(0).toUpperCase() + detected.slice(1)} | ${caption}`;
                 } else if (rawTags.includes('bird')) {
-                    finalDesc = `Avian Observation: ${caption}`;
+                    finalDesc = `Bird Observation: ${caption}`;
                 } else if (rawTags.includes('animal') || rawTags.includes('wildlife')) {
-                    finalDesc = `Wildlife Log: ${caption}`;
+                    finalDesc = `Wildlife Detected: ${caption}`;
+                } else if (rawTags.includes('insect')) {
+                    finalDesc = `Insect Species: ${caption}`;
                 } else {
-                    finalDesc = `Environmental Insight: ${caption}`;
+                    finalDesc = `Environmental Observation: ${caption}`;
                 }
 
                 // Filtering for high-quality tags only
