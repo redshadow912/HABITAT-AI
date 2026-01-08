@@ -624,6 +624,12 @@
     <script>
         // CONFIGURATION
         const API_BASE = "https://func-habitat-vyshnav-c6ajdehqbubhgugq.polandcentral-01.azurewebsites.net/api";
+        
+        // Logic Apps for Hybrid Architecture
+        const LOGIC_APP_GET_OBSERVATIONS = "https://prod-04.polandcentral.logic.azure.com:443/workflows/8cb88f33221d4c488de4e5e0f96b6f02/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=ZI8UemVLnSfMXSgN1iWwW00RJauX7vV5Gwyw9Edt184";
+        const LOGIC_APP_UPDATE_OBSERVATION = "https://prod-14.polandcentral.logic.azure.com:443/workflows/af0722fe6b0b4deca2501a1d3820fb6c/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=pXlEpo2VmVhhO9UBf32mU1B5rdFPnpDV2F0s56iu1-M";
+        const LOGIC_APP_DELETE_OBSERVATION = "https://prod-14.polandcentral.logic.azure.com:443/workflows/16f81b4bace046e29f06e6b1fdfbf4c1/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=OKXzKdkUnLIyyK3TcyrZZmp7sMGNn0mjfDC0IjJMslQ";
+        const LOGIC_APP_COMMENTS_URL = "https://prod-21.polandcentral.logic.azure.com:443/workflows/e5eed84b481d4ff3b8bbe8a219ee6d82/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=KtpJw4Wqb3Osd8EhJLlFGbRNcN3Sl8Q0MJPR5jsCv2w";
 
         // MAP SETUP
         const map = L.map('map', { zoomControl: false }).setView([54.5973, -5.9301], 12);
@@ -649,16 +655,17 @@
             } catch (e) { }
         }
 
-        // LOAD DATA
+        // LOAD DATA from Logic App
         async function loadData() {
             const container = document.getElementById('feed-container');
             container.innerHTML = '<div style="text-align:center; padding:20px;">Loading...</div>';
 
             try {
-                const res = await fetch(`${API_BASE}/GetObservations`);
-                allObservations = await res.json(); // Save to global variable
-                renderData(allObservations); // Initial Render
+                const res = await fetch(LOGIC_APP_GET_OBSERVATIONS);
+                allObservations = await res.json();
+                renderData(allObservations);
             } catch (err) {
+                console.error('Load error:', err);
                 container.innerHTML = "Error loading data.";
             }
         }
@@ -906,17 +913,23 @@
             }
 
             try {
-                // Use Azure Function for UPDATE (or can be migrated to Logic App)
-                const response = await fetch(`${API_BASE}/observations/${encodeURIComponent(id)}`, {
-                    method: 'PUT',
+                // Use Logic App for UPDATE (Hybrid Architecture)
+                const response = await fetch(LOGIC_APP_UPDATE_OBSERVATION, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ description: newDesc, location: newLoc })
+                    body: JSON.stringify({ 
+                        id: id,
+                        description: newDesc, 
+                        location: newLoc 
+                    })
                 });
 
                 if (response.ok) {
                     closeModals();
                     loadData();
                 } else {
+                    const errorText = await response.text();
+                    console.error('Update failed:', errorText);
                     alert('Failed to update observation');
                 }
             } catch (e) {
@@ -927,8 +940,18 @@
 
         async function deleteItem(id, userId) {
             if (confirm("Delete this record?")) {
-                await fetch(`${API_BASE}/observations/${encodeURIComponent(id)}/${userId}`, { method: 'DELETE' });
-                loadData();
+                try {
+                    // Use Logic App for DELETE (Hybrid Architecture)
+                    await fetch(LOGIC_APP_DELETE_OBSERVATION, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id, userId: userId })
+                    });
+                    loadData();
+                } catch (e) {
+                    console.error('Delete error:', e);
+                    alert('Failed to delete observation');
+                }
             }
         }
 
