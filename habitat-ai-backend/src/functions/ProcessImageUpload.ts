@@ -55,8 +55,10 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
         if (isImage && process.env.AI_VISION_ENDPOINT && process.env.AI_VISION_KEY) {
             try {
                 const endpoint = process.env.AI_VISION_ENDPOINT.replace(/\/$/, "");
-                // Adding 'objects' for better species detection
-                const aiUrl = `${endpoint}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=tags,caption,objects`;
+                // Using v3.2 API - much more stable for regions like Poland Central
+                const aiUrl = `${endpoint}/vision/v3.2/analyze?visualFeatures=Description,Tags,Objects`;
+
+                context.log(`[AI] Processing: ${filename}`);
 
                 const aiResponse = await axios.post(aiUrl, blob, {
                     headers: {
@@ -66,16 +68,22 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
                 });
 
                 const data = aiResponse.data;
+                const topCaption = data.description?.captions?.[0];
+
                 aiData = {
-                    description: data.captionResult?.text || "Wilderness Observation",
-                    tags: (data.tagsResult?.values || []).map((t: any) => t.name),
-                    confidence: data.captionResult?.confidence || 0,
-                    species: (data.tagsResult?.values || []).find((t: any) => t.confidence > 0.8)?.name || "Unknown",
-                    objects: (data.objectsResult?.values || []).map((o: any) => o.name)
+                    description: topCaption?.text || "Wilderness Observation",
+                    tags: (data.tags || []).map((t: any) => t.name),
+                    confidence: topCaption?.confidence || 0,
+                    species: (data.tags || []).find((t: any) => t.confidence > 0.85)?.name || "Unknown",
+                    objects: (data.objects || []).map((o: any) => o.object)
                 };
-            } catch (e) { context.error("AI Analysis Failed", e); }
+                context.log(`[AI] Success: ${aiData.description}`);
+            } catch (e) {
+                context.error(`[AI] Failed for ${filename}. Details: ${e.message}`);
+                if (e.response) context.error(`[AI] Status: ${e.response.status}, Reply: ${JSON.stringify(e.response.data)}`);
+            }
         } else {
-            // Mock Data for Video/Audio
+            context.log(`[AI] Skipping: ${!isImage ? 'Not an image' : 'Credentials missing in Azure configuration'}`);
             if (['.mp3', '.wav'].includes(extension)) aiData = { description: "Audio Recording", tags: ["audio"], confidence: 1, species: "Audio", objects: [] };
             if (['.mp4', '.mov'].includes(extension)) aiData = { description: "Video Recording", tags: ["video"], confidence: 1, species: "Video", objects: [] };
         }
