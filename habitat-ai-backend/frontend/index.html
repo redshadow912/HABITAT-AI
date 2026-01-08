@@ -266,51 +266,81 @@
             border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
-        .admin-controls {
+        /* Button Styling Refinement */
+        .controls {
             position: absolute;
-            top: 16px;
-            right: 16px;
-            display: none;
-            gap: 10px;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
             z-index: 10;
         }
 
-        .admin-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
+        .ctrl-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
             border: none;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            backdrop-filter: blur(10px);
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-size: 0.9rem;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .btn-edit {
-            background: rgba(59, 130, 246, 0.9);
+            background: rgba(5, 150, 105, 0.85);
+            /* Emerald */
         }
 
         .btn-delete {
-            background: rgba(239, 68, 68, 0.9);
+            background: rgba(220, 38, 38, 0.85);
+            /* Red */
         }
 
-        .btn-edit:hover {
-            transform: scale(1.1);
-            background: #3b82f6;
+        .ctrl-btn:hover {
+            transform: scale(1.1) rotate(5deg);
+            filter: brightness(1.1);
         }
 
-        .btn-delete:hover {
-            transform: scale(1.1);
-            background: #ef4444;
+        .search-container {
+            position: relative;
+            flex: 1;
         }
 
-        body.admin-mode .admin-controls {
-            display: flex;
-            animation: fadeIn 0.3s;
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            margin-top: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .search-result-item:hover {
+            background: var(--leaf-pale);
+            color: var(--fern-green);
+        }
+
+        .search-result-item:last-child {
+            border: none;
         }
 
         .modal {
@@ -466,8 +496,11 @@
             </div>
 
             <div class="filter-section">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search species or location..."
-                    onkeyup="filterData()">
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input"
+                        placeholder="Search species or jump to location..." onkeyup="handleSearch(event)">
+                    <div id="searchResults" class="search-results"></div>
+                </div>
                 <input type="date" id="dateInput" class="date-input" onchange="filterData()">
             </div>
 
@@ -588,14 +621,19 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" onclick="openEdit('${obs.id}', '${obs.aiData.description.replace(/'/g, "\\'")}', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
-                        <button class="ctrl-btn btn-delete" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
+                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${obs.aiData.description.replace(/'/g, "\\'")}', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="card-body">
-                        <div class="species-name">${obs.aiData.description || "Unidentified"}</div>
-                        <div class="location-text"><i class="fa-solid fa-location-dot"></i> ${obs.location || "Unknown Location"}</div>
-                        <div style="font-size:0.75rem; color:#9ca3af; margin-top:5px;">${new Date(obs.timestamp).toLocaleDateString()}</div>
-                        <div class="tags">${(obs.aiData.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                        <div class="card-meta">
+                            <span class="confidence"><i class="fa-solid fa-microchip"></i> AI Analyzed</span>
+                            <span style="font-size:0.75rem; color:#9ca3af;">${new Date(obs.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <div class="species-name">${obs.aiData.description || "Unidentified Wildlife"}</div>
+                        <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
+                            <i class="fa-solid fa-location-dot"></i> ${obs.location || "Unknown Location"}
+                        </div>
+                        <div class="tags" style="margin-top:12px;">${(obs.aiData.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -624,6 +662,50 @@
             });
 
             renderData(filtered);
+        }
+
+        // SEARCH & PIN LOGIC
+        let searchTimeout;
+        async function handleSearch(e) {
+            filterData(); // Still filter the list locally
+
+            const query = e.target.value;
+            if (query.length < 3) {
+                document.getElementById('searchResults').style.display = 'none';
+                return;
+            }
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => geocodeSearch(query), 500);
+        }
+
+        async function geocodeSearch(query) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3`);
+                const data = await res.json();
+
+                const resultsPanel = document.getElementById('searchResults');
+                if (data.length > 0) {
+                    resultsPanel.innerHTML = data.map(item => `
+                        <div class="search-result-item" onclick="pinAndZoom(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-location-dot"></i> ${item.display_name}
+                        </div>
+                    `).join('');
+                    resultsPanel.style.display = 'block';
+                } else {
+                    resultsPanel.style.display = 'none';
+                }
+            } catch (err) { console.error("Geocoding failed", err); }
+        }
+
+        function pinAndZoom(lat, lon, name) {
+            map.setView([lat, lon], 14);
+            L.marker([lat, lon]).addTo(map)
+                .bindPopup(`<b>Search Result</b><br>${name}`)
+                .openPopup();
+
+            document.getElementById('searchResults').style.display = 'none';
+            document.getElementById('searchInput').value = name.split(',')[0];
         }
 
         // UPLOAD (With Manual Location)
