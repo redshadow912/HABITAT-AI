@@ -22,25 +22,28 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
         // 2. Fetch Metadata (GPS/User)
         let location = "Unknown";
         let user = "Anonymous";
-        let lat = 54.5973; 
+        let lat = 54.5973;
         let lng = -5.9301;
+        let userDescription = "";
 
         try {
             const blobClient = containerClient.getBlobClient(filename);
             const properties = await blobClient.getProperties();
             const meta = properties.metadata || {};
-            
-            location = meta.location || "Unknown";
+
+            location = decodeURIComponent(meta.location || "Unknown");
             user = meta.uploadedby || "Anonymous";
-            if(meta.lat) lat = parseFloat(meta.lat);
-            if(meta.lng) lng = parseFloat(meta.lng);
-            
+            userDescription = decodeURIComponent(meta.userdescription || "");
+
+            if (meta.lat) lat = parseFloat(meta.lat);
+            if (meta.lng) lng = parseFloat(meta.lng);
+
         } catch (e) { context.log("Metadata read failed, using defaults."); }
 
         // 3. AI Analysis
         const extension = path.extname(filename).toLowerCase();
         const isImage = ['.jpg', '.jpeg', '.png'].includes(extension);
-        
+
         let aiData = { description: "Multimedia Content", tags: ["media"], confidence: 1.0 };
 
         if (isImage && process.env.AI_VISION_ENDPOINT && process.env.AI_VISION_KEY) {
@@ -48,7 +51,7 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
                 // Remove trailing slash from endpoint if present
                 const endpoint = process.env.AI_VISION_ENDPOINT.replace(/\/$/, "");
                 const aiUrl = `${endpoint}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=tags,caption`;
-                
+
                 const aiResponse = await axios.post(aiUrl, blob, {
                     headers: {
                         'Ocp-Apim-Subscription-Key': process.env.AI_VISION_KEY,
@@ -58,14 +61,14 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
 
                 aiData = {
                     description: aiResponse.data.captionResult.text,
-                    tags: aiResponse.data.tagsResult.values.map((t:any) => t.name),
+                    tags: aiResponse.data.tagsResult.values.map((t: any) => t.name),
                     confidence: aiResponse.data.captionResult.confidence
                 };
             } catch (e) { context.error("AI Analysis Failed"); }
         } else {
-             // Mock Data for Video/Audio
-             if(['.mp3', '.wav'].includes(extension)) aiData = { description: "Audio Recording", tags: ["audio"], confidence: 1 };
-             if(['.mp4', '.mov'].includes(extension)) aiData = { description: "Video Recording", tags: ["video"], confidence: 1 };
+            // Mock Data for Video/Audio
+            if (['.mp3', '.wav'].includes(extension)) aiData = { description: "Audio Recording", tags: ["audio"], confidence: 1 };
+            if (['.mp4', '.mov'].includes(extension)) aiData = { description: "Video Recording", tags: ["video"], confidence: 1 };
         }
 
         // 4. Save to Cosmos DB
@@ -77,7 +80,8 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
             timestamp: new Date().toISOString(),
             // URL IS FIXED HERE:
             imageUrl: `https://${accountName}.blob.core.windows.net/raw-uploads/${filename}`,
-            type: isImage ? 'image' : (['.mp4','.mov'].includes(extension) ? 'video' : 'audio'),
+            type: isImage ? 'image' : (['.mp4', '.mov'].includes(extension) ? 'video' : 'audio'),
+            userDescription: userDescription,
             aiData: aiData
         };
 

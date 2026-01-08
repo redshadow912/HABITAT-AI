@@ -457,6 +457,37 @@
             }
         }
 
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(240, 253, 244, 0.8);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--text-dark);
+            padding: 14px;
+            border-radius: 12px;
+            resize: none;
+            height: 80px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: var(--fern-green);
+        }
+
         @media (max-width: 1024px) {
             .app-container {
                 grid-template-columns: 1fr;
@@ -509,7 +540,7 @@
     </div>
 
     <div class="modal" id="uploadModal">
-        <div class="modal-box">
+        <div class="modal-box" style="width: 480px;">
             <h3 style="color:var(--emerald-deep); margin-bottom:20px;">New Observation</h3>
 
             <div class="input-group">
@@ -518,8 +549,21 @@
             </div>
 
             <div class="input-group">
-                <label class="input-label">Location Name</label>
-                <input type="text" id="locationInput" placeholder="e.g. Botanic Gardens">
+                <label class="input-label">Search Location</label>
+                <div class="search-container">
+                    <input type="text" id="locationInput" placeholder="Search address or park..."
+                        onkeyup="handleModalLocationSearch(event)">
+                    <div id="modalSearchResults" class="search-results"></div>
+                </div>
+                <small id="coordStatus"
+                    style="color: var(--fern-green); font-size: 0.7rem; display: block; margin-top: 5px;">Using current
+                    GPS location</small>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Observation Notes</label>
+                <textarea id="descriptionInput"
+                    placeholder="What did you see? (e.g. A small bird near the oak tree)"></textarea>
             </div>
 
             <button class="upload-btn" style="width: 100%; justify-content: center;" onclick="uploadFile()">Submit
@@ -569,6 +613,7 @@
         // STATE
         let allObservations = []; // Store data locally for fast filtering
         let currentUser = null;
+        let selectedUploadCoords = null; // Stored when user searches a custom location
 
         // AUTH CHECK
         async function checkUser() {
@@ -630,7 +675,8 @@
                             <span style="font-size:0.75rem; color:#9ca3af;">${new Date(obs.timestamp).toLocaleDateString()}</span>
                         </div>
                         <div class="species-name">${obs.aiData.description || "Unidentified Wildlife"}</div>
-                        <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">
+                        ${obs.userDescription ? `<div style="font-size: 0.85rem; color: var(--text-dark); margin-top: 10px; padding: 10px; background: rgba(16,185,129,0.05); border-radius: 8px;">"${obs.userDescription}"</div>` : ''}
+                        <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">
                             <i class="fa-solid fa-location-dot"></i> ${obs.location || "Unknown Location"}
                         </div>
                         <div class="tags" style="margin-top:12px;">${(obs.aiData.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
@@ -708,24 +754,60 @@
             document.getElementById('searchInput').value = name.split(',')[0];
         }
 
+        // UPLOAD MODAL LOCATION SEARCH
+        let modalSearchTimeout;
+        async function handleModalLocationSearch(e) {
+            const query = e.target.value;
+            if (query.length < 3) {
+                document.getElementById('modalSearchResults').style.display = 'none';
+                return;
+            }
+            clearTimeout(modalSearchTimeout);
+            modalSearchTimeout = setTimeout(async () => {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3`);
+                const data = await res.json();
+                const resultsPanel = document.getElementById('modalSearchResults');
+                resultsPanel.innerHTML = data.map(item => `
+                    <div class="search-result-item" onclick="setUploadLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\\'")}')">
+                        <i class="fa-solid fa-location-dot"></i> ${item.display_name}
+                    </div>
+                `).join('');
+                resultsPanel.style.display = 'block';
+            }, 500);
+        }
+
+        function setUploadLocation(lat, lon, name) {
+            selectedUploadCoords = { lat, lng: lon, name };
+            document.getElementById('locationInput').value = name.split(',')[0];
+            document.getElementById('modalSearchResults').style.display = 'none';
+            document.getElementById('coordStatus').innerText = "📍 Custom location set: " + name.split(',')[0];
+        }
+
         // UPLOAD (With Manual Location)
         async function uploadFile() {
             const file = document.getElementById('fileInput').files[0];
+            const userDesc = document.getElementById('descriptionInput').value;
             const locName = document.getElementById('locationInput').value;
             if (!file) return alert("Select a file.");
 
             const status = document.getElementById('uploadStatus');
-            status.innerText = "Getting GPS...";
 
+            // If user has already selected a custom location, use it
+            if (selectedUploadCoords) {
+                await performUpload(file, locName || selectedUploadCoords.name, selectedUploadCoords.lat, selectedUploadCoords.lng, userDesc);
+                return;
+            }
+
+            // Otherwise, try to get GPS
+            status.innerText = "Getting GPS...";
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                await performUpload(file, locName, pos.coords.latitude, pos.coords.longitude);
+                await performUpload(file, locName, pos.coords.latitude, pos.coords.longitude, userDesc);
             }, () => {
-                // If GPS denied, upload anyway (Default coords will be used by backend)
-                performUpload(file, locName, 54.5973, -5.9301);
+                performUpload(file, locName, 54.5973, -5.9301, userDesc);
             });
         }
 
-        async function performUpload(file, locName, lat, lng) {
+        async function performUpload(file, locName, lat, lng, userDesc) {
             const status = document.getElementById('uploadStatus');
             status.innerText = "Uploading...";
 
@@ -744,12 +826,14 @@
                         'x-ms-meta-location': locName || "Unknown",
                         'x-ms-meta-lat': lat.toString(),
                         'x-ms-meta-lng': lng.toString(),
-                        'x-ms-meta-uploadedby': currentUser ? currentUser.userDetails : "guest"
+                        'x-ms-meta-uploadedby': currentUser ? currentUser.userDetails : "guest",
+                        'x-ms-meta-userdescription': encodeURIComponent(userDesc || "")
                     },
                     body: file
                 });
 
                 status.innerText = "Success! Processing...";
+                selectedUploadCoords = null; // Reset for next time
                 setTimeout(() => { closeModals(); loadData(); }, 3000);
             } catch (e) { status.innerText = "Error uploading."; }
         }
