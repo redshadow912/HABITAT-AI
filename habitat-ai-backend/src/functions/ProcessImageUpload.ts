@@ -42,15 +42,21 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
 
         // 3. AI Analysis
         const extension = path.extname(filename).toLowerCase();
-        const isImage = ['.jpg', '.jpeg', '.png'].includes(extension);
+        const isImage = ['.jpg', '.jpeg', '.png', '.webp', '.bmp'].includes(extension);
 
-        let aiData = { description: "Multimedia Content", tags: ["media"], confidence: 1.0 };
+        let aiData = {
+            description: "Multimedia Content",
+            tags: ["media"],
+            confidence: 1.0,
+            species: "Unknown",
+            objects: [] as string[]
+        };
 
         if (isImage && process.env.AI_VISION_ENDPOINT && process.env.AI_VISION_KEY) {
             try {
-                // Remove trailing slash from endpoint if present
                 const endpoint = process.env.AI_VISION_ENDPOINT.replace(/\/$/, "");
-                const aiUrl = `${endpoint}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=tags,caption`;
+                // Adding 'objects' for better species detection
+                const aiUrl = `${endpoint}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=tags,caption,objects`;
 
                 const aiResponse = await axios.post(aiUrl, blob, {
                     headers: {
@@ -59,16 +65,19 @@ export async function ProcessImageUpload(blob: Buffer, context: InvocationContex
                     }
                 });
 
+                const data = aiResponse.data;
                 aiData = {
-                    description: aiResponse.data.captionResult.text,
-                    tags: aiResponse.data.tagsResult.values.map((t: any) => t.name),
-                    confidence: aiResponse.data.captionResult.confidence
+                    description: data.captionResult?.text || "Wilderness Observation",
+                    tags: (data.tagsResult?.values || []).map((t: any) => t.name),
+                    confidence: data.captionResult?.confidence || 0,
+                    species: (data.tagsResult?.values || []).find((t: any) => t.confidence > 0.8)?.name || "Unknown",
+                    objects: (data.objectsResult?.values || []).map((o: any) => o.name)
                 };
-            } catch (e) { context.error("AI Analysis Failed"); }
+            } catch (e) { context.error("AI Analysis Failed", e); }
         } else {
             // Mock Data for Video/Audio
-            if (['.mp3', '.wav'].includes(extension)) aiData = { description: "Audio Recording", tags: ["audio"], confidence: 1 };
-            if (['.mp4', '.mov'].includes(extension)) aiData = { description: "Video Recording", tags: ["video"], confidence: 1 };
+            if (['.mp3', '.wav'].includes(extension)) aiData = { description: "Audio Recording", tags: ["audio"], confidence: 1, species: "Audio", objects: [] };
+            if (['.mp4', '.mov'].includes(extension)) aiData = { description: "Video Recording", tags: ["video"], confidence: 1, species: "Video", objects: [] };
         }
 
         // 4. Save to Cosmos DB

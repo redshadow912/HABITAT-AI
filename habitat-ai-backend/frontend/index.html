@@ -369,6 +369,54 @@
             border: none;
         }
 
+        .ai-insights-btn {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--fern-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: fit-content;
+        }
+
+        .ai-insights-btn:hover {
+            background: var(--fern-green);
+            color: white;
+        }
+
+        .ai-insights-panel {
+            display: none;
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+            padding: 15px;
+            margin-top: 12px;
+            border-radius: 16px;
+        }
+
+        .ai-insights-panel.active {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -692,11 +740,11 @@
         function isAdmin() {
             // Test override for development - remove in production
             if (TEST_ADMIN_OVERRIDE) return true;
-            
+
             if (!currentUser) return false;
             return ADMIN_USERS.includes(currentUser.userDetails);
         }
-        
+
         // Helper function to check if current user owns an observation
         function isOwner(observation) {
             if (!currentUser) return false;
@@ -754,12 +802,12 @@
                 // Calculate confidence percentage
                 const confidencePercent = Math.round((obs.aiData?.confidence || 0) * 100);
                 const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
-                
+
                 // Determine animal type and icon based on species description
                 const description = (obs.aiData?.description || '').toLowerCase();
                 let animalType = 'Unknown';
                 let animalIcon = 'fa-paw';
-                
+
                 if (description.includes('bird') || description.includes('eagle') || description.includes('hawk') || description.includes('owl') || description.includes('sparrow') || description.includes('robin') || description.includes('duck') || description.includes('goose') || description.includes('crow') || description.includes('raven')) {
                     animalType = 'Bird';
                     animalIcon = 'fa-dove';
@@ -820,12 +868,30 @@
                         <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 12px;">
                             <i class="fa-solid fa-location-dot"></i> ${obs.location || "Unknown Location"}
                         </div>
-                                        
-                        ${(obs.aiData?.tags && obs.aiData.tags.length > 0) ? `
-                            <div class="tags" style="margin-top:14px;">
-                                ${obs.aiData.tags.slice(0, 5).map(t => `<span class="tag">${t}</span>`).join('')}
+
+                        <button class="ai-insights-btn" onclick="toggleInsights('${obs.id}')">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> AI Deep Insights
+                        </button>
+
+                        <div class="ai-insights-panel" id="insights-${obs.id}">
+                            <div style="font-size: 0.8rem; line-height: 1.6; color: var(--text-dark);">
+                                <div style="margin-bottom: 8px; display: flex; justify-content: space-between;">
+                                    <strong><i class="fa-solid fa-dna"></i> AI Species Classification:</strong>
+                                    <span style="color: var(--fern-green); font-weight: 700;">${obs.aiData?.species || 'Unknown'}</span>
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong><i class="fa-solid fa-layer-group"></i> Detected Biodiversity:</strong>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                                        ${(obs.aiData?.objects || []).length > 0
+                        ? obs.aiData.objects.map(obj => `<span style="background: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #eee;">${obj}</span>`).join('')
+                        : (obs.aiData?.tags || []).slice(0, 3).map(obj => `<span style="background: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #eee;">${obj}</span>`).join('')}
+                                    </div>
+                                </div>
+                                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 0.75rem; color: var(--text-muted); font-style: italic;">
+                                    Analysis powered by Computer Vision 4.0 models.
+                                </div>
                             </div>
-                        ` : ''}
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1271,6 +1337,16 @@
 
         function openUploadModal() { document.getElementById('uploadModal').style.display = 'flex'; }
         function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); document.getElementById('uploadStatus').innerText = ""; }
+
+        function toggleInsights(id) {
+            const panel = document.getElementById(`insights-${id}`);
+            panel.classList.toggle('active');
+
+            const btn = event.currentTarget;
+            btn.innerHTML = panel.classList.contains('active')
+                ? '<i class="fa-solid fa-chevron-up"></i> Hide Insights'
+                : '<i class="fa-solid fa-wand-magic-sparkles"></i> AI Deep Insights';
+        }
 
         checkUser();
         loadData();
