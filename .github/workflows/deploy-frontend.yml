@@ -3,8 +3,6 @@ name: Deploy Frontend to Azure Storage
 on:
   push:
     branches: [main]
-    paths:
-      - 'frontend/**'
   workflow_dispatch:
 
 jobs:
@@ -14,18 +12,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: 'Deploy to Azure Storage'
+        uses: Azure/storage-deploy@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Upload static site to $web
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az storage blob upload-batch \
-              --account-name ${{ secrets.STORAGE_ACCOUNT_NAME }} \
-              --destination '$web' \
-              --source ./frontend \
-              --overwrite true \
-              --auth-mode login
+          connection-string: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          source-path: 'habitat-ai-backend/frontend'
+          container-name: '$web'
+          strip-components: 1 # This ensures index.html is in the root of $web, not inside a folder
