@@ -66,15 +66,30 @@ app.http('UpdateObservation', {
     handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
         try {
             const id = decodeURIComponent(request.params.id!);
-            const body = await request.json() as { userId?: string; description?: string; userDescription?: string; location?: string };
+            const body = await request.json() as { userId?: string; description?: string; userDescription?: string; location?: string; coordinates?: { lat: number; lng: number } };
+            
+            // Debug logging
+            context.log(`UpdateObservation called with ID: ${id}`);
+            context.log(`Request body: ${JSON.stringify(body)}`);
             
             // Get item using provided userId or query across partitions
             let item: any;
+            context.log(`Looking up item with ID: ${id}`);
+            
             if (body.userId) {
-                // Use provided userId for direct lookup
-                const { resource } = await container.item(id, body.userId).read();
-                item = resource;
-            } else {
+                context.log(`Using userId for direct lookup: ${body.userId}`);
+                try {
+                    const { resource } = await container.item(id, body.userId).read();
+                    item = resource;
+                    context.log(`Direct lookup successful: ${!!item}`);
+                } catch (lookupError) {
+                    context.log(`Direct lookup failed: ${lookupError}`);
+                    item = null;
+                }
+            } 
+            
+            if (!item) {
+                context.log(`Falling back to cross-partition query`);
                 // Fallback: Query across all partitions (less efficient)
                 const querySpec = {
                     query: "SELECT * FROM c WHERE c.id = @id",
@@ -82,6 +97,7 @@ app.http('UpdateObservation', {
                 };
                 const { resources } = await container.items.query(querySpec).fetchAll();
                 item = resources[0];
+                context.log(`Cross-partition query found ${resources.length} items`);
             }
             
             if (!item) {
@@ -92,6 +108,7 @@ app.http('UpdateObservation', {
             if (body.description) item.aiData.description = body.description; // Update Species Name
             if (body.userDescription !== undefined) item.userDescription = body.userDescription; // Update Observer Notes
             if (body.location) item.location = body.location;                 // Update Location
+            if (body.coordinates) item.coordinates = body.coordinates;        // Update Coordinates for map positioning
             
             item.status = "user-verified";
 

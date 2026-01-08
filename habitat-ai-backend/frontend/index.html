@@ -614,7 +614,10 @@
 
             <div class="input-group">
                 <label class="input-label">Location</label>
-                <input type="text" id="editLocation">
+                <div class="search-container">
+                    <input type="text" id="editLocation" placeholder="Enter location..." onkeyup="handleEditLocationSearch(event)">
+                    <div id="editSearchResults" class="search-results"></div>
+                </div>
             </div>
 
             <input type="hidden" id="editId">
@@ -646,6 +649,7 @@
         let allObservations = []; // Store data locally for fast filtering
         let currentUser = null;
         let selectedUploadCoords = null; // Stored when user searches a custom location
+        let selectedEditCoords = null; // Stored when user searches a custom location in edit modal
 
         // AUTH CHECK
         async function checkUser() {
@@ -812,6 +816,34 @@
             document.getElementById('searchInput').value = name.split(',')[0];
         }
 
+        // EDIT MODAL LOCATION SEARCH
+        let editSearchTimeout;
+        async function handleEditLocationSearch(e) {
+            const query = e.target.value;
+            if (query.length < 3) {
+                document.getElementById('editSearchResults').style.display = 'none';
+                return;
+            }
+            clearTimeout(editSearchTimeout);
+            editSearchTimeout = setTimeout(async () => {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3`);
+                const data = await res.json();
+                const resultsPanel = document.getElementById('editSearchResults');
+                resultsPanel.innerHTML = data.map(item => `
+                    <div class="search-result-item" onclick="setEditLocation(${item.lat}, ${item.lon}, '${item.display_name.replace(/'/g, "\'")}')">
+                        <i class="fa-solid fa-location-dot"></i> ${item.display_name}
+                    </div>
+                `).join('');
+                resultsPanel.style.display = 'block';
+            }, 500);
+        }
+
+        function setEditLocation(lat, lon, name) {
+            selectedEditCoords = { lat: parseFloat(lat), lng: parseFloat(lon), name };
+            document.getElementById('editLocation').value = name.split(',')[0];
+            document.getElementById('editSearchResults').style.display = 'none';
+        }
+
         // UPLOAD MODAL LOCATION SEARCH
         let modalSearchTimeout;
         async function handleModalLocationSearch(e) {
@@ -907,6 +939,10 @@
             document.getElementById('editUserDescription').value = userDesc || '';
             document.getElementById('editLocation').value = loc;
             document.getElementById('editUserId').value = userId || '';
+            
+            // Clear any previous coordinate selection
+            selectedEditCoords = null;
+            
             document.getElementById('editModal').style.display = 'flex';
         }
 
@@ -916,6 +952,14 @@
             const newSpeciesName = document.getElementById('editSpeciesName').value;
             const newUserDesc = document.getElementById('editUserDescription').value;
             const newLoc = document.getElementById('editLocation').value;
+            
+            // Debug logging
+            console.log('Save Edit - ID:', id);
+            console.log('Save Edit - UserId:', userId);
+            console.log('Save Edit - Species Name:', newSpeciesName);
+            console.log('Save Edit - User Desc:', newUserDesc);
+            console.log('Save Edit - Location:', newLoc);
+            console.log('Save Edit - Selected Coords:', selectedEditCoords);
 
             if (!newLoc) {
                 alert('Please fill in the location');
@@ -931,11 +975,17 @@
                         userId: userId,
                         description: newSpeciesName || 'Unidentified Wildlife',
                         userDescription: newUserDesc || '',
-                        location: newLoc 
+                        location: newLoc,
+                        coordinates: selectedEditCoords ? { 
+                            lat: selectedEditCoords.lat, 
+                            lng: selectedEditCoords.lng 
+                        } : undefined
                     })
                 });
 
                 if (response.ok) {
+                    // Reset edit coordinates
+                    selectedEditCoords = null;
                     closeModals();
                     loadData();
                 } else {
