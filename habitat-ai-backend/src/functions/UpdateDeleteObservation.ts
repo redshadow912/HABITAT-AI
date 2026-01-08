@@ -66,10 +66,23 @@ app.http('UpdateObservation', {
     handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
         try {
             const id = decodeURIComponent(request.params.id!);
-            const body = await request.json() as { description?: string; userDescription?: string; location?: string };
+            const body = await request.json() as { userId?: string; description?: string; userDescription?: string; location?: string };
             
-            // Hardcoded "demo-user" (In Phase 7/Login, this would be dynamic)
-            const { resource: item } = await container.item(id, "demo-user").read();
+            // Get item using provided userId or query across partitions
+            let item: any;
+            if (body.userId) {
+                // Use provided userId for direct lookup
+                const { resource } = await container.item(id, body.userId).read();
+                item = resource;
+            } else {
+                // Fallback: Query across all partitions (less efficient)
+                const querySpec = {
+                    query: "SELECT * FROM c WHERE c.id = @id",
+                    parameters: [{ name: "@id", value: id }]
+                };
+                const { resources } = await container.items.query(querySpec).fetchAll();
+                item = resources[0];
+            }
             
             if (!item) {
                 return { status: 404, body: "Item not found" };

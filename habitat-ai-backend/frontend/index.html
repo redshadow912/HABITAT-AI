@@ -618,6 +618,7 @@
             </div>
 
             <input type="hidden" id="editId">
+            <input type="hidden" id="editUserId">
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="upload-btn" style="flex: 1;" onclick="saveEdit()">Save Changes</button>
@@ -704,7 +705,7 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\\'")  }', '${(obs.userDescription || '').replace(/'/g, "\\'")  }', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\'")  }', '${(obs.userDescription || '').replace(/'/g, "\'")  }', '${(obs.location || '').replace(/'/g, "\'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="card-body">
@@ -900,16 +901,18 @@
         }
 
         // EDIT & DELETE
-        function openEdit(id, aiDesc, userDesc, loc) {
+        function openEdit(id, aiDesc, userDesc, loc, userId) {
             document.getElementById('editId').value = id;
             document.getElementById('editSpeciesName').value = aiDesc || '';
             document.getElementById('editUserDescription').value = userDesc || '';
             document.getElementById('editLocation').value = loc;
+            document.getElementById('editUserId').value = userId || '';
             document.getElementById('editModal').style.display = 'flex';
         }
 
         async function saveEdit() {
             const id = document.getElementById('editId').value;
+            const userId = document.getElementById('editUserId').value;
             const newSpeciesName = document.getElementById('editSpeciesName').value;
             const newUserDesc = document.getElementById('editUserDescription').value;
             const newLoc = document.getElementById('editLocation').value;
@@ -925,6 +928,7 @@
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
+                        userId: userId,
                         description: newSpeciesName || 'Unidentified Wildlife',
                         userDescription: newUserDesc || '',
                         location: newLoc 
