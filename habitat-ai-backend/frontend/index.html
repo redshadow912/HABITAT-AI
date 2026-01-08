@@ -762,12 +762,8 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        ${(isAdmin() || isOwner(obs)) ? `
-                            <button class="ctrl-btn" style="background: rgba(59, 130, 246, 0.9);" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
-                        ` : ''}
-                        ${isAdmin() ? `
-                            <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
-                        ` : ''}
+                        <button class="ctrl-btn" style="background: rgba(59, 130, 246, 0.9);" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                         <button class="ctrl-btn" style="background: rgba(16, 185, 129, 0.85);" title="Add Comment" onclick="openComments('${obs.id}')"><i class="fa-solid fa-comment"></i></button>
                     </div>
                     <div class="card-body">
