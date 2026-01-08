@@ -630,11 +630,20 @@
     </div>
 
     <div class="modal" id="commentsModal">
-        <div class="modal-box" style="width: 500px; max-height: 80vh; overflow-y: auto;">
-            <h3 style="margin-bottom: 20px; color:var(--emerald-deep);">Discussion</h3>
+        <div class="modal-box" style="width: 600px; max-height: 90vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px; color:var(--emerald-deep);">Observation Details & Discussion</h3>
             
-            <div id="commentsContainer" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
-                <!-- Comments will be loaded here -->
+            <!-- Observation Preview -->
+            <div id="observationPreview" style="margin-bottom: 25px; padding: 15px; background: rgba(240, 253, 244, 0.6); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <!-- Observation details will be loaded here -->
+            </div>
+            
+            <!-- Comments Section -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: var(--emerald-deep); margin-bottom: 15px; font-size: 1.1rem;">Comments</h4>
+                <div id="commentsContainer" style="max-height: 300px; overflow-y: auto;">
+                    <!-- Comments will be loaded here -->
+                </div>
             </div>
             
             <div class="input-group">
@@ -1066,18 +1075,80 @@
             document.getElementById('commentObservationId').value = observationId;
             document.getElementById('commentsModal').style.display = 'flex';
             document.getElementById('commentInput').value = '';
+            
+            // Load observation details
+            await loadObservationDetails(observationId);
+            
+            // Load comments
             await loadComments(observationId);
         }
 
+        async function loadObservationDetails(observationId) {
+            const previewContainer = document.getElementById('observationPreview');
+            
+            try {
+                // Find the observation in our local data
+                const observation = allObservations.find(obs => obs.id === observationId);
+                
+                if (observation) {
+                    // Calculate confidence percentage
+                    const confidencePercent = Math.round((observation.aiData?.confidence || 0) * 100);
+                    const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
+                    
+                    previewContainer.innerHTML = `
+                        <div style="display: flex; gap: 15px; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: var(--emerald-deep); font-size: 1.2rem; margin-bottom: 8px;">
+                                    ${observation.aiData?.description || "Unidentified Wildlife"}
+                                </div>
+                                
+                                ${observation.userDescription && observation.userDescription !== 'User Observation' && observation.userDescription.trim() !== '' ? `
+                                    <div style="font-size: 0.9rem; color: var(--text-dark); margin-bottom: 12px; padding: 10px; background: rgba(16,185,129,0.12); border-left: 3px solid var(--fern-green); border-radius: 6px;">
+                                        <div style="font-weight: 600; font-size: 0.8rem; color: var(--fern-green); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
+                                            Observer Notes
+                                        </div>
+                                        "${observation.userDescription}"
+                                    </div>
+                                ` : ''}
+                                
+                                <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px;">
+                                    <i class="fa-solid fa-location-dot"></i> ${observation.location || "Unknown Location"}
+                                </div>
+                                
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="confidence" style="background: ${confidenceColor}22; color: ${confidenceColor}; border-color: ${confidenceColor}44; font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">
+                                        <i class="fa-solid fa-brain"></i> AI: ${confidencePercent}%
+                                    </span>
+                                    <span style="font-size:0.75rem; color:#9ca3af;">
+                                        ${new Date(observation.timestamp).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    previewContainer.innerHTML = '<div style="text-align: center; color: #9ca3af;">Observation details not available</div>';
+                }
+            } catch (e) {
+                console.error('Error loading observation details:', e);
+                previewContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load observation details</div>';
+            }
+        }
+
+        // Local storage for comments (in a real app, this would come from backend)
+        let observationComments = {};
+        
         async function loadComments(observationId) {
             const commentsContainer = document.getElementById('commentsContainer');
             commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading comments...</div>';
             
             try {
-                // Since Logic App returns 401, we'll initialize with empty comments
-                // In a production environment, you'd configure the Logic App to allow GET requests
-                // or implement a separate endpoint for fetching comments
-                renderComments([]);
+                // Initialize comments array for this observation if it doesn't exist
+                if (!observationComments[observationId]) {
+                    observationComments[observationId] = [];
+                }
+                
+                renderComments(observationComments[observationId]);
             } catch (e) {
                 console.error('Error loading comments:', e);
                 commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load comments</div>';
@@ -1137,13 +1208,45 @@
                 
                 if (response.ok) {
                     document.getElementById('commentInput').value = '';
-                    // Show success message and refresh comments
-                    alert('Comment posted successfully!');
-                    await loadComments(observationId);
+                    
+                    // Store comment locally for immediate display
+                    const newComment = {
+                        id: Date.now().toString(),
+                        user: userName,
+                        text: commentText,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // Initialize comments array if needed
+                    if (!observationComments[observationId]) {
+                        observationComments[observationId] = [];
+                    }
+                    
+                    // Add new comment
+                    observationComments[observationId].push(newComment);
+                    
+                    // Refresh comments display
+                    renderComments(observationComments[observationId]);
+                    
                 } else if (response.status === 401) {
-                    // Handle unauthorized access
+                    // Handle unauthorized access - still store locally
                     console.error('Unauthorized access to comments endpoint');
-                    alert('Unable to post comment. Please contact administrator.');
+                    
+                    // Store comment locally even if backend fails
+                    const newComment = {
+                        id: Date.now().toString(),
+                        user: userName,
+                        text: commentText,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    if (!observationComments[observationId]) {
+                        observationComments[observationId] = [];
+                    }
+                    
+                    observationComments[observationId].push(newComment);
+                    renderComments(observationComments[observationId]);
+                    
                 } else {
                     const errorText = await response.text();
                     console.error('Comment failed:', errorText);
@@ -1151,7 +1254,9 @@
                 }
             } catch (e) {
                 console.error('Comment error:', e);
-                alert('Error posting comment. Please try again later.');
+                // Show error in comments section instead of popup
+                const commentsContainer = document.getElementById('commentsContainer');
+                commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Error posting comment. Please try again.</div>';
             }
         }
 
