@@ -685,13 +685,23 @@
         let selectedUploadCoords = null; // Stored when user searches a custom location
         let selectedEditCoords = null; // Stored when user searches a custom location in edit modal
 
-        // HARDCODED ADMIN - In production, this should come from backend/auth system
-        const ADMIN_USERS = ['admin@habitat.com', 'moderator@habitat.com']; // Add your admin emails here
+        // HARDCODED ACCESS CONTROL - For testing purposes
+        const ADMIN_USERS = ['admin@habitat.com', 'moderator@habitat.com']; // Admin emails
+        const TEST_ADMIN_OVERRIDE = true; // Set to true to bypass GitHub login for admin testing
 
         // Helper function to check if current user is admin
         function isAdmin() {
+            // Test override for development - remove in production
+            if (TEST_ADMIN_OVERRIDE) return true;
+            
             if (!currentUser) return false;
             return ADMIN_USERS.includes(currentUser.userDetails);
+        }
+        
+        // Helper function to check if current user owns an observation
+        function isOwner(observation) {
+            if (!currentUser) return false;
+            return observation.userId === currentUser.userDetails;
         }
 
         // AUTH CHECK
@@ -752,7 +762,9 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn" style="background: rgba(59, 130, 246, 0.9);" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
+                        ${(isAdmin() || isOwner(obs)) ? `
+                            <button class="ctrl-btn" style="background: rgba(59, 130, 246, 0.9);" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
+                        ` : ''}
                         ${isAdmin() ? `
                             <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                         ` : ''}
