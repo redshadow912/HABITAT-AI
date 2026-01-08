@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: 'habitat-ai-backend'
 
   deploy:
     runs-on: windows-latest
@@ -69,5 +69,5 @@ jobs:
         with:
           app-name: 'func-habitat-vyshnav'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: .
           
