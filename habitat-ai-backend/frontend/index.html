@@ -920,14 +920,13 @@
             }
 
             try {
-                // Use Logic App for UPDATE (Hybrid Architecture)
-                const response = await fetch(LOGIC_APP_UPDATE_OBSERVATION, {
-                    method: 'POST',
+                // Call Azure Function directly for UPDATE
+                const response = await fetch(`${API_BASE}/observations/${encodeURIComponent(id)}`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        id: id,
                         description: newSpeciesName || 'Unidentified Wildlife',
-                        userDescription: newUserDesc || 'User Observation',
+                        userDescription: newUserDesc || '',
                         location: newLoc 
                     })
                 });

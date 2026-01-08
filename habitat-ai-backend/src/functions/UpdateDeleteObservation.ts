@@ -66,7 +66,7 @@ app.http('UpdateObservation', {
     handler: async (request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> => {
         try {
             const id = decodeURIComponent(request.params.id!);
-            const body = await request.json() as { description?: string; location?: string };
+            const body = await request.json() as { description?: string; userDescription?: string; location?: string };
             
             // Hardcoded "demo-user" (In Phase 7/Login, this would be dynamic)
             const { resource: item } = await container.item(id, "demo-user").read();
@@ -77,7 +77,8 @@ app.http('UpdateObservation', {
 
             // Update allowed fields
             if (body.description) item.aiData.description = body.description; // Update Species Name
-            if (body.location) item.location = body.location;                 // NEW: Update Location
+            if (body.userDescription !== undefined) item.userDescription = body.userDescription; // Update Observer Notes
+            if (body.location) item.location = body.location;                 // Update Location
             
             item.status = "user-verified";
 
