@@ -603,6 +603,11 @@
             <h3 style="margin-bottom: 15px; color:var(--emerald-deep);">Edit Record</h3>
 
             <div class="input-group">
+                <label class="input-label">Species Name / Title</label>
+                <input type="text" id="editSpeciesName" placeholder="e.g. Red Fox, Oak Tree...">
+            </div>
+
+            <div class="input-group">
                 <label class="input-label">Your Notes</label>
                 <textarea id="editUserDescription" rows="2" placeholder="Your observation notes..."></textarea>
             </div>
@@ -699,7 +704,7 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.userDescription || '').replace(/'/g, "\\'")  }', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\\'")  }', '${(obs.userDescription || '').replace(/'/g, "\\'")  }', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="card-body">
@@ -895,8 +900,9 @@
         }
 
         // EDIT & DELETE
-        function openEdit(id, userDesc, loc) {
+        function openEdit(id, aiDesc, userDesc, loc) {
             document.getElementById('editId').value = id;
+            document.getElementById('editSpeciesName').value = aiDesc || '';
             document.getElementById('editUserDescription').value = userDesc || '';
             document.getElementById('editLocation').value = loc;
             document.getElementById('editModal').style.display = 'flex';
@@ -904,6 +910,7 @@
 
         async function saveEdit() {
             const id = document.getElementById('editId').value;
+            const newSpeciesName = document.getElementById('editSpeciesName').value;
             const newUserDesc = document.getElementById('editUserDescription').value;
             const newLoc = document.getElementById('editLocation').value;
 
@@ -919,6 +926,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         id: id,
+                        description: newSpeciesName || 'Unidentified Wildlife',
                         userDescription: newUserDesc || 'User Observation',
                         location: newLoc 
                     })
