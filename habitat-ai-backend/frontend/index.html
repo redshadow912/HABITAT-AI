@@ -222,15 +222,28 @@
             border-color: var(--fern-green);
         }
 
-        .card-img {
+        .card-img,
+        .card-media {
             width: 100%;
             height: 240px;
             object-fit: cover;
             transition: transform 0.4s ease;
+            display: block;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
         }
 
-        .card:hover .card-img {
+        .card:hover .card-img,
+        .card:hover .card-media {
             transform: scale(1.05);
+        }
+
+        /* Image loading state */
+        .card-media[src=""],
+        .card-media:not([src]) {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .card-body {
@@ -661,47 +674,70 @@
             const container = document.getElementById('feed-container');
             container.innerHTML = "";
             markersLayer.clearLayers();
-
+        
             if (data.length === 0) {
                 container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">No results found.</div>';
                 return;
             }
-
+        
             data.forEach(obs => {
                 // Media Type Logic
-                let mediaHtml = `<img src="${obs.imageUrl}" class="card-media">`;
+                let mediaHtml = `<img src="${obs.imageUrl}" class="card-media" alt="Wildlife observation" onerror="this.style.background='#f3f4f6'; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'14\'%3EImage Error%3C/text%3E%3C/svg%3E'">`;
                 if (obs.type === 'video') mediaHtml = `<video src="${obs.imageUrl}" class="card-media" controls></video>`;
-                if (obs.type === 'audio') mediaHtml = `<div class="card-media" style="display:flex;align-items:center;justify-content:center;background:#f3f4f6;"><i class="fa-solid fa-headphones" style="font-size:40px;color:var(--fern-green)"></i><audio src="${obs.imageUrl}" controls style="position:absolute;bottom:10px;width:90%"></audio></div>`;
-
-                // Build Card
+                if (obs.type === 'audio') mediaHtml = `<div class="card-media" style="display:flex;align-items:center;justify-content:center;background:#f3f4f6;position:relative;"><i class="fa-solid fa-headphones" style="font-size:40px;color:var(--fern-green)"></i><audio src="${obs.imageUrl}" controls style="position:absolute;bottom:10px;width:90%"></audio></div>`;
+        
+                // Calculate confidence percentage
+                const confidencePercent = Math.round((obs.aiData?.confidence || 0) * 100);
+                const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
+        
+                // Build Card with enhanced AI display
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${obs.aiData.description.replace(/'/g, "\\'")}', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
+                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\\'")  }', '${(obs.location || '').replace(/'/g, "\\'")}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="card-body">
                         <div class="card-meta">
-                            <span class="confidence"><i class="fa-solid fa-microchip"></i> AI Analyzed</span>
+                            <span class="confidence" style="background: ${confidenceColor}22; color: ${confidenceColor}; border-color: ${confidenceColor}44;">
+                                <i class="fa-solid fa-brain"></i> AI: ${confidencePercent}%
+                            </span>
                             <span style="font-size:0.75rem; color:#9ca3af;">${new Date(obs.timestamp).toLocaleDateString()}</span>
                         </div>
-                        <div class="species-name">${obs.aiData.description || "Unidentified Wildlife"}</div>
-                        ${obs.userDescription ? `<div style="font-size: 0.85rem; color: var(--text-dark); margin-top: 10px; padding: 10px; background: rgba(16,185,129,0.05); border-radius: 8px;">"${obs.userDescription}"</div>` : ''}
-                        <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">
+                                
+                        <div class="species-name" style="margin-bottom: 8px;">
+                            ${obs.aiData?.description || "Unidentified Wildlife"}
+                        </div>
+                                
+                        ${obs.userDescription && obs.userDescription !== 'User Observation' ? `
+                            <div style="font-size: 0.88rem; color: var(--text-dark); margin-top: 12px; padding: 12px; background: rgba(16,185,129,0.08); border-left: 3px solid var(--fern-green); border-radius: 8px; line-height: 1.5;">
+                                <div style="font-weight: 600; font-size: 0.75rem; color: var(--fern-green); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                                    <i class="fa-solid fa-quote-left" style="font-size: 0.7rem;"></i> Observer Notes
+                                </div>
+                                "${obs.userDescription}"
+                            </div>
+                        ` : ''}
+                                
+                        <div class="location-text" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 12px;">
                             <i class="fa-solid fa-location-dot"></i> ${obs.location || "Unknown Location"}
                         </div>
-                        <div class="tags" style="margin-top:12px;">${(obs.aiData.tags || []).slice(0, 3).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                                
+                        ${(obs.aiData?.tags && obs.aiData.tags.length > 0) ? `
+                            <div class="tags" style="margin-top:14px;">
+                                ${obs.aiData.tags.slice(0, 5).map(t => `<span class="tag">${t}</span>`).join('')}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 container.appendChild(card);
-
+        
                 // Map Marker
                 const lat = obs.coordinates?.lat || 54.5973;
                 const lng = obs.coordinates?.lng || -5.9301;
                 L.circleMarker([lat, lng], { radius: 6, fillColor: '#10b981', color: '#fff', weight: 2, fillOpacity: 0.8 })
-                    .addTo(markersLayer).bindPopup(obs.aiData.description);
+                    .addTo(markersLayer).bindPopup(`<b>${obs.aiData?.description || 'Observation'}</b><br>${obs.location || 'Unknown'}`);
             });
         }
 
@@ -836,19 +872,23 @@
                     method: 'PUT',
                     headers: {
                         'x-ms-blob-type': 'BlockBlob',
-                        'x-ms-meta-location': locName || "Unknown",
+                        'Content-Type': file.type,
+                        'x-ms-meta-location': encodeURIComponent(locName || "Unknown"),
                         'x-ms-meta-lat': lat.toString(),
                         'x-ms-meta-lng': lng.toString(),
-                        'x-ms-meta-uploadedby': currentUser ? currentUser.userDetails : "guest",
-                        'x-ms-meta-userdescription': encodeURIComponent(userDesc || "")
+                        'x-ms-meta-uploadedby': encodeURIComponent(currentUser ? currentUser.userDetails : "guest"),
+                        'x-ms-meta-description': encodeURIComponent(userDesc || "User Observation")
                     },
                     body: file
                 });
 
-                status.innerText = "Success! Processing...";
+                status.innerText = "Success! AI is analyzing your observation...";
                 selectedUploadCoords = null; // Reset for next time
                 setTimeout(() => { closeModals(); loadData(); }, 3000);
-            } catch (e) { status.innerText = "Error uploading."; }
+            } catch (e) { 
+                console.error('Upload error:', e);
+                status.innerText = "Error uploading. Please try again."; 
+            }
         }
 
         // EDIT & DELETE
