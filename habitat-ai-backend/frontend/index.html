@@ -417,6 +417,37 @@
             }
         }
 
+        .rare-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: linear-gradient(45deg, #f59e0b, #fbbf24);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.5);
+            z-index: 10;
+            animation: shimmer 2s infinite linear;
+            background-size: 200% 100%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -828,11 +859,19 @@
                     animalIcon = 'fa-bug';
                 }
 
+                // Determine if this is a "Rare Discovery" for the badge
+                const isRare = confidencePercent >= 90;
+
                 // Build Card with enhanced AI display
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     ${mediaHtml}
+                    ${isRare ? `
+                        <div class="rare-badge">
+                            <i class="fa-solid fa-star"></i> Rare Discovery
+                        </div>
+                    ` : ''}
                     <div class="controls">
                         <button class="ctrl-btn" style="background: rgba(59, 130, 246, 0.9);" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
