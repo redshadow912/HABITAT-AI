@@ -1063,25 +1063,15 @@
             commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading comments...</div>';
             
             try {
-                // For now, we'll simulate comments since we don't have a dedicated comments endpoint
-                // In a real implementation, you'd fetch from your comments Logic App
-                const mockComments = [
-                    {
-                        id: '1',
-                        user: 'WildlifeEnthusiast',
-                        text: 'Beautiful shot! This looks like a red fox.',
-                        timestamp: '2024-01-15T10:30:00Z'
-                    },
-                    {
-                        id: '2',
-                        user: 'NaturePhotographer',
-                        text: 'The lighting is perfect in this photo.',
-                        timestamp: '2024-01-15T14:45:00Z'
-                    }
-                ];
+                // Fetch comments from Logic App endpoint
+                const response = await fetch(`${LOGIC_APP_COMMENTS_URL}?observationId=${encodeURIComponent(observationId)}`);
                 
-                renderComments(mockComments);
-                
+                if (response.ok) {
+                    const comments = await response.json();
+                    renderComments(comments);
+                } else {
+                    commentsContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No comments yet. Be the first to comment!</div>';
+                }
             } catch (e) {
                 console.error('Error loading comments:', e);
                 commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load comments</div>';
@@ -1123,10 +1113,8 @@
                 return;
             }
             
-            if (!currentUser) {
-                alert('Please log in to post comments');
-                return;
-            }
+            // Allow all users to post comments (anonymous or logged-in)
+            const userName = currentUser ? currentUser.userDetails : 'Anonymous User';
             
             try {
                 // Use Logic App for ADD COMMENT (Hybrid Architecture)
@@ -1135,7 +1123,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         observationId: observationId,
-                        userId: currentUser.userDetails,
+                        userId: userName,
                         comment: commentText,
                         timestamp: new Date().toISOString()
                     })
@@ -1143,6 +1131,7 @@
                 
                 if (response.ok) {
                     document.getElementById('commentInput').value = '';
+                    // Refresh comments to show the newly added comment
                     await loadComments(observationId);
                 } else {
                     const errorText = await response.text();
