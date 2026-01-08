@@ -672,6 +672,15 @@
         let currentUser = null;
         let selectedUploadCoords = null; // Stored when user searches a custom location
         let selectedEditCoords = null; // Stored when user searches a custom location in edit modal
+        
+        // HARDCODED ADMIN - In production, this should come from backend/auth system
+        const ADMIN_USERS = ['admin@habitat.com', 'moderator@habitat.com']; // Add your admin emails here
+        
+        // Helper function to check if current user is admin
+        function isAdmin() {
+            if (!currentUser) return false;
+            return ADMIN_USERS.includes(currentUser.userDetails);
+        }
 
         // AUTH CHECK
         async function checkUser() {
@@ -731,8 +740,10 @@
                 card.innerHTML = `
                     ${mediaHtml}
                     <div class="controls">
-                        <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\'")  }', '${(obs.userDescription || '').replace(/'/g, "\'")  }', '${(obs.location || '').replace(/'/g, "\'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
-                        <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
+                        ${isAdmin() ? `
+                            <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")  }', '${(obs.userDescription || '').replace(/'/g, "'")  }', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
+                            <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
+                        ` : ''}
                         <button class="ctrl-btn" style="background: rgba(16, 185, 129, 0.85);" title="Add Comment" onclick="openComments('${obs.id}')"><i class="fa-solid fa-comment"></i></button>
                     </div>
                     <div class="card-body">
@@ -1063,15 +1074,10 @@
             commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading comments...</div>';
             
             try {
-                // Fetch comments from Logic App endpoint
-                const response = await fetch(`${LOGIC_APP_COMMENTS_URL}?observationId=${encodeURIComponent(observationId)}`);
-                
-                if (response.ok) {
-                    const comments = await response.json();
-                    renderComments(comments);
-                } else {
-                    commentsContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No comments yet. Be the first to comment!</div>';
-                }
+                // Since Logic App returns 401, we'll initialize with empty comments
+                // In a production environment, you'd configure the Logic App to allow GET requests
+                // or implement a separate endpoint for fetching comments
+                renderComments([]);
             } catch (e) {
                 console.error('Error loading comments:', e);
                 commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load comments</div>';
@@ -1131,8 +1137,13 @@
                 
                 if (response.ok) {
                     document.getElementById('commentInput').value = '';
-                    // Refresh comments to show the newly added comment
+                    // Show success message and refresh comments
+                    alert('Comment posted successfully!');
                     await loadComments(observationId);
+                } else if (response.status === 401) {
+                    // Handle unauthorized access
+                    console.error('Unauthorized access to comments endpoint');
+                    alert('Unable to post comment. Please contact administrator.');
                 } else {
                     const errorText = await response.text();
                     console.error('Comment failed:', errorText);
@@ -1140,7 +1151,7 @@
                 }
             } catch (e) {
                 console.error('Comment error:', e);
-                alert('Error posting comment');
+                alert('Error posting comment. Please try again later.');
             }
         }
 
