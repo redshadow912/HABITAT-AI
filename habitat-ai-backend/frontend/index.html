@@ -629,6 +629,28 @@
         </div>
     </div>
 
+    <div class="modal" id="commentsModal">
+        <div class="modal-box" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px; color:var(--emerald-deep);">Discussion</h3>
+            
+            <div id="commentsContainer" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
+                <!-- Comments will be loaded here -->
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">Add a Comment</label>
+                <textarea id="commentInput" rows="3" placeholder="Share your thoughts about this observation..."></textarea>
+            </div>
+            
+            <input type="hidden" id="commentObservationId">
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="upload-btn" style="flex: 1;" onclick="addComment()">Post Comment</button>
+                <button class="upload-btn" style="background: #6b7280;" onclick="closeModals()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // CONFIGURATION
@@ -711,6 +733,7 @@
                     <div class="controls">
                         <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "\'")  }', '${(obs.userDescription || '').replace(/'/g, "\'")  }', '${(obs.location || '').replace(/'/g, "\'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
                         <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
+                        <button class="ctrl-btn" style="background: rgba(16, 185, 129, 0.85);" title="Add Comment" onclick="openComments('${obs.id}')"><i class="fa-solid fa-comment"></i></button>
                     </div>
                     <div class="card-body">
                         <div class="card-meta">
@@ -842,6 +865,11 @@
             selectedEditCoords = { lat: parseFloat(lat), lng: parseFloat(lon), name };
             document.getElementById('editLocation').value = name.split(',')[0];
             document.getElementById('editSearchResults').style.display = 'none';
+            
+            // Debug logging
+            console.log('Selected Edit Coords:', selectedEditCoords);
+            console.log('Lat:', typeof selectedEditCoords.lat, selectedEditCoords.lat);
+            console.log('Lng:', typeof selectedEditCoords.lng, selectedEditCoords.lng);
         }
 
         // UPLOAD MODAL LOCATION SEARCH
@@ -968,19 +996,25 @@
 
             try {
                 // Call Azure Function directly for UPDATE
+                const requestBody = { 
+                    userId: userId,
+                    description: newSpeciesName || 'Unidentified Wildlife',
+                    userDescription: newUserDesc || '',
+                    location: newLoc,
+                    coordinates: selectedEditCoords ? { 
+                        lat: selectedEditCoords.lat, 
+                        lng: selectedEditCoords.lng 
+                    } : undefined
+                };
+                
+                // Debug logging
+                console.log('Request Body:', requestBody);
+                console.log('Coordinates in request:', requestBody.coordinates);
+                
                 const response = await fetch(`${API_BASE}/observations/${encodeURIComponent(id)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        userId: userId,
-                        description: newSpeciesName || 'Unidentified Wildlife',
-                        userDescription: newUserDesc || '',
-                        location: newLoc,
-                        coordinates: selectedEditCoords ? { 
-                            lat: selectedEditCoords.lat, 
-                            lng: selectedEditCoords.lng 
-                        } : undefined
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (response.ok) {
@@ -1013,6 +1047,111 @@
                     console.error('Delete error:', e);
                     alert('Failed to delete observation');
                 }
+            }
+        }
+
+        // COMMENTS FUNCTIONALITY
+        async function openComments(observationId) {
+            document.getElementById('commentObservationId').value = observationId;
+            document.getElementById('commentsModal').style.display = 'flex';
+            document.getElementById('commentInput').value = '';
+            await loadComments(observationId);
+        }
+
+        async function loadComments(observationId) {
+            const commentsContainer = document.getElementById('commentsContainer');
+            commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading comments...</div>';
+            
+            try {
+                // For now, we'll simulate comments since we don't have a dedicated comments endpoint
+                // In a real implementation, you'd fetch from your comments Logic App
+                const mockComments = [
+                    {
+                        id: '1',
+                        user: 'WildlifeEnthusiast',
+                        text: 'Beautiful shot! This looks like a red fox.',
+                        timestamp: '2024-01-15T10:30:00Z'
+                    },
+                    {
+                        id: '2',
+                        user: 'NaturePhotographer',
+                        text: 'The lighting is perfect in this photo.',
+                        timestamp: '2024-01-15T14:45:00Z'
+                    }
+                ];
+                
+                renderComments(mockComments);
+                
+            } catch (e) {
+                console.error('Error loading comments:', e);
+                commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load comments</div>';
+            }
+        }
+
+        function renderComments(comments) {
+            const commentsContainer = document.getElementById('commentsContainer');
+            
+            if (comments.length === 0) {
+                commentsContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No comments yet. Be the first to comment!</div>';
+                return;
+            }
+            
+            commentsContainer.innerHTML = comments.map(comment => `
+                <div style="background: rgba(240, 253, 244, 0.8); border-radius: 12px; padding: 15px; margin-bottom: 15px; border-left: 3px solid var(--fern-green);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="font-weight: 600; color: var(--emerald-deep);">
+                            <i class="fa-solid fa-user" style="margin-right: 8px;"></i>
+                            ${comment.user}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            ${new Date(comment.timestamp).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div style="color: var(--text-dark); line-height: 1.5;">
+                        ${comment.text}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addComment() {
+            const observationId = document.getElementById('commentObservationId').value;
+            const commentText = document.getElementById('commentInput').value.trim();
+            
+            if (!commentText) {
+                alert('Please enter a comment');
+                return;
+            }
+            
+            if (!currentUser) {
+                alert('Please log in to post comments');
+                return;
+            }
+            
+            try {
+                // Use Logic App for ADD COMMENT (Hybrid Architecture)
+                const response = await fetch(LOGIC_APP_COMMENTS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        observationId: observationId,
+                        userId: currentUser.userDetails,
+                        comment: commentText,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    document.getElementById('commentInput').value = '';
+                    await loadComments(observationId);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Comment failed:', errorText);
+                    alert('Failed to post comment');
+                }
+            } catch (e) {
+                console.error('Comment error:', e);
+                alert('Error posting comment');
             }
         }
 

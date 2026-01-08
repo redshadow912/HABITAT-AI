@@ -71,6 +71,8 @@ app.http('UpdateObservation', {
             // Debug logging
             context.log(`UpdateObservation called with ID: ${id}`);
             context.log(`Request body: ${JSON.stringify(body)}`);
+            context.log(`Coordinates received: ${JSON.stringify(body.coordinates)}`);
+            context.log(`Has coordinates: ${!!body.coordinates}`);
             
             // Get item using provided userId or query across partitions
             let item: any;
@@ -108,7 +110,12 @@ app.http('UpdateObservation', {
             if (body.description) item.aiData.description = body.description; // Update Species Name
             if (body.userDescription !== undefined) item.userDescription = body.userDescription; // Update Observer Notes
             if (body.location) item.location = body.location;                 // Update Location
-            if (body.coordinates) item.coordinates = body.coordinates;        // Update Coordinates for map positioning
+            if (body.coordinates) {
+                item.coordinates = body.coordinates;        // Update Coordinates for map positioning
+                context.log(`Updated coordinates to: ${JSON.stringify(body.coordinates)}`);
+            } else {
+                context.log(`No coordinates provided, keeping existing: ${JSON.stringify(item.coordinates)}`);
+            }
             
             item.status = "user-verified";
 
