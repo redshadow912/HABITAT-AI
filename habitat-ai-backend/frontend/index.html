@@ -615,7 +615,8 @@
             <div class="input-group">
                 <label class="input-label">Location</label>
                 <div class="search-container">
-                    <input type="text" id="editLocation" placeholder="Enter location..." onkeyup="handleEditLocationSearch(event)">
+                    <input type="text" id="editLocation" placeholder="Enter location..."
+                        onkeyup="handleEditLocationSearch(event)">
                     <div id="editSearchResults" class="search-results"></div>
                 </div>
             </div>
@@ -632,12 +633,13 @@
     <div class="modal" id="commentsModal">
         <div class="modal-box" style="width: 600px; max-height: 90vh; overflow-y: auto;">
             <h3 style="margin-bottom: 20px; color:var(--emerald-deep);">Observation Details & Discussion</h3>
-            
+
             <!-- Observation Preview -->
-            <div id="observationPreview" style="margin-bottom: 25px; padding: 15px; background: rgba(240, 253, 244, 0.6); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div id="observationPreview"
+                style="margin-bottom: 25px; padding: 15px; background: rgba(240, 253, 244, 0.6); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
                 <!-- Observation details will be loaded here -->
             </div>
-            
+
             <!-- Comments Section -->
             <div style="margin-bottom: 20px;">
                 <h4 style="color: var(--emerald-deep); margin-bottom: 15px; font-size: 1.1rem;">Comments</h4>
@@ -645,14 +647,15 @@
                     <!-- Comments will be loaded here -->
                 </div>
             </div>
-            
+
             <div class="input-group">
                 <label class="input-label">Add a Comment</label>
-                <textarea id="commentInput" rows="3" placeholder="Share your thoughts about this observation..."></textarea>
+                <textarea id="commentInput" rows="3"
+                    placeholder="Share your thoughts about this observation..."></textarea>
             </div>
-            
+
             <input type="hidden" id="commentObservationId">
-            
+
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="upload-btn" style="flex: 1;" onclick="addComment()">Post Comment</button>
                 <button class="upload-btn" style="background: #6b7280;" onclick="closeModals()">Close</button>
@@ -664,7 +667,7 @@
     <script>
         // CONFIGURATION
         const API_BASE = "https://func-habitat-vyshnav-c6ajdehqbubhgugq.polandcentral-01.azurewebsites.net/api";
-        
+
         // Logic Apps for Hybrid Architecture
         const LOGIC_APP_GET_OBSERVATIONS = "https://prod-04.polandcentral.logic.azure.com:443/workflows/8cb88f33221d4c488de4e5e0f96b6f02/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=ZI8UemVLnSfMXSgN1iWwW00RJauX7vV5Gwyw9Edt184";
         const LOGIC_APP_UPDATE_OBSERVATION = "https://prod-14.polandcentral.logic.azure.com:443/workflows/af0722fe6b0b4deca2501a1d3820fb6c/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=pXlEpo2VmVhhO9UBf32mU1B5rdFPnpDV2F0s56iu1-M";
@@ -681,10 +684,10 @@
         let currentUser = null;
         let selectedUploadCoords = null; // Stored when user searches a custom location
         let selectedEditCoords = null; // Stored when user searches a custom location in edit modal
-        
+
         // HARDCODED ADMIN - In production, this should come from backend/auth system
         const ADMIN_USERS = ['admin@habitat.com', 'moderator@habitat.com']; // Add your admin emails here
-        
+
         // Helper function to check if current user is admin
         function isAdmin() {
             if (!currentUser) return false;
@@ -725,24 +728,24 @@
             const container = document.getElementById('feed-container');
             container.innerHTML = "";
             markersLayer.clearLayers();
-                
+
             if (data.length === 0) {
                 container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">No results found.</div>';
                 return;
             }
-                
+
             data.forEach(obs => {
                 console.log('Rendering observation:', obs.id, 'userDescription:', obs.userDescription); // Debug log
-                        
+
                 // Media Type Logic
                 let mediaHtml = `<img src="${obs.imageUrl}" class="card-media" alt="Wildlife observation" onerror="this.style.background='#f3f4f6'; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' fill=\'%23999\' font-size=\'14\'%3EImage Error%3C/text%3E%3C/svg%3E'">`;
                 if (obs.type === 'video') mediaHtml = `<video src="${obs.imageUrl}" class="card-media" controls></video>`;
                 if (obs.type === 'audio') mediaHtml = `<div class="card-media" style="display:flex;align-items:center;justify-content:center;background:#f3f4f6;position:relative;"><i class="fa-solid fa-headphones" style="font-size:40px;color:var(--fern-green)"></i><audio src="${obs.imageUrl}" controls style="position:absolute;bottom:10px;width:90%"></audio></div>`;
-                
+
                 // Calculate confidence percentage
                 const confidencePercent = Math.round((obs.aiData?.confidence || 0) * 100);
                 const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
-                
+
                 // Build Card with enhanced AI display
                 const card = document.createElement('div');
                 card.className = 'card';
@@ -750,7 +753,7 @@
                     ${mediaHtml}
                     <div class="controls">
                         ${isAdmin() ? `
-                            <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")  }', '${(obs.userDescription || '').replace(/'/g, "'")  }', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
+                            <button class="ctrl-btn btn-edit" title="Edit Observation" onclick="openEdit('${obs.id}', '${(obs.aiData?.description || '').replace(/'/g, "'")}', '${(obs.userDescription || '').replace(/'/g, "'")}', '${(obs.location || '').replace(/'/g, "'")}', '${obs.userId}')" ><i class="fa-solid fa-pen"></i></button>
                             <button class="ctrl-btn btn-delete" title="Delete Observation" onclick="deleteItem('${obs.id}', '${obs.userId}')"><i class="fa-solid fa-trash"></i></button>
                         ` : ''}
                         <button class="ctrl-btn" style="background: rgba(16, 185, 129, 0.85);" title="Add Comment" onclick="openComments('${obs.id}')"><i class="fa-solid fa-comment"></i></button>
@@ -788,7 +791,7 @@
                     </div>
                 `;
                 container.appendChild(card);
-                
+
                 // Map Marker
                 const lat = obs.coordinates?.lat || 54.5973;
                 const lng = obs.coordinates?.lng || -5.9301;
@@ -885,7 +888,7 @@
             selectedEditCoords = { lat: parseFloat(lat), lng: parseFloat(lon), name };
             document.getElementById('editLocation').value = name.split(',')[0];
             document.getElementById('editSearchResults').style.display = 'none';
-            
+
             // Debug logging
             console.log('Selected Edit Coords:', selectedEditCoords);
             console.log('Lat:', typeof selectedEditCoords.lat, selectedEditCoords.lat);
@@ -974,9 +977,9 @@
                 status.innerText = "Success! AI is analyzing your observation...";
                 selectedUploadCoords = null; // Reset for next time
                 setTimeout(() => { closeModals(); loadData(); }, 3000);
-            } catch (e) { 
+            } catch (e) {
                 console.error('Upload error:', e);
-                status.innerText = "Error uploading. Please try again."; 
+                status.innerText = "Error uploading. Please try again.";
             }
         }
 
@@ -987,10 +990,10 @@
             document.getElementById('editUserDescription').value = userDesc || '';
             document.getElementById('editLocation').value = loc;
             document.getElementById('editUserId').value = userId || '';
-            
+
             // Clear any previous coordinate selection
             selectedEditCoords = null;
-            
+
             document.getElementById('editModal').style.display = 'flex';
         }
 
@@ -1000,7 +1003,7 @@
             const newSpeciesName = document.getElementById('editSpeciesName').value;
             const newUserDesc = document.getElementById('editUserDescription').value;
             const newLoc = document.getElementById('editLocation').value;
-            
+
             // Debug logging
             console.log('Save Edit - ID:', id);
             console.log('Save Edit - UserId:', userId);
@@ -1016,21 +1019,21 @@
 
             try {
                 // Call Azure Function directly for UPDATE
-                const requestBody = { 
+                const requestBody = {
                     userId: userId,
                     description: newSpeciesName || 'Unidentified Wildlife',
                     userDescription: newUserDesc || '',
                     location: newLoc,
-                    coordinates: selectedEditCoords ? { 
-                        lat: selectedEditCoords.lat, 
-                        lng: selectedEditCoords.lng 
+                    coordinates: selectedEditCoords ? {
+                        lat: selectedEditCoords.lat,
+                        lng: selectedEditCoords.lng
                     } : undefined
                 };
-                
+
                 // Debug logging
                 console.log('Request Body:', requestBody);
                 console.log('Coordinates in request:', requestBody.coordinates);
-                
+
                 const response = await fetch(`${API_BASE}/observations/${encodeURIComponent(id)}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -1075,52 +1078,50 @@
             document.getElementById('commentObservationId').value = observationId;
             document.getElementById('commentsModal').style.display = 'flex';
             document.getElementById('commentInput').value = '';
-            
+
             // Load observation details
             await loadObservationDetails(observationId);
-            
+
             // Load comments
             await loadComments(observationId);
         }
 
         async function loadObservationDetails(observationId) {
             const previewContainer = document.getElementById('observationPreview');
-            
+
             try {
                 // Find the observation in our local data
                 const observation = allObservations.find(obs => obs.id === observationId);
-                
+
                 if (observation) {
                     // Calculate confidence percentage
                     const confidencePercent = Math.round((observation.aiData?.confidence || 0) * 100);
                     const confidenceColor = confidencePercent >= 80 ? '#10b981' : confidencePercent >= 60 ? '#f59e0b' : '#ef4444';
-                    
+
                     previewContainer.innerHTML = `
-                        <div style="display: flex; gap: 15px; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: var(--emerald-deep); font-size: 1.2rem; margin-bottom: 8px;">
+                        <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                            <img src="${observation.imageUrl}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <div style="flex: 1; min-width: 250px;">
+                                <div style="font-weight: 700; color: var(--emerald-deep); font-size: 1.3rem; margin-bottom: 8px;">
                                     ${observation.aiData?.description || "Unidentified Wildlife"}
                                 </div>
                                 
+                                <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
+                                    <i class="fa-solid fa-location-dot"></i> ${observation.location || "Unknown Location"}
+                                </div>
+
                                 ${observation.userDescription && observation.userDescription !== 'User Observation' && observation.userDescription.trim() !== '' ? `
-                                    <div style="font-size: 0.9rem; color: var(--text-dark); margin-bottom: 12px; padding: 10px; background: rgba(16,185,129,0.12); border-left: 3px solid var(--fern-green); border-radius: 6px;">
-                                        <div style="font-weight: 600; font-size: 0.8rem; color: var(--fern-green); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">
-                                            Observer Notes
-                                        </div>
+                                    <div style="font-size: 0.95rem; color: var(--text-dark); margin-bottom: 12px; padding: 12px; background: white; border-left: 4px solid var(--fern-green); border-radius: 8px; font-style: italic; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                                         "${observation.userDescription}"
                                     </div>
                                 ` : ''}
                                 
-                                <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px;">
-                                    <i class="fa-solid fa-location-dot"></i> ${observation.location || "Unknown Location"}
-                                </div>
-                                
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span class="confidence" style="background: ${confidenceColor}22; color: ${confidenceColor}; border-color: ${confidenceColor}44; font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; font-weight: 600;">
-                                        <i class="fa-solid fa-brain"></i> AI: ${confidencePercent}%
+                                <div style="display: flex; gap: 15px; align-items: center;">
+                                    <span class="confidence" style="background: ${confidenceColor}22; color: ${confidenceColor}; border-color: ${confidenceColor}44; font-size: 0.8rem;">
+                                        <i class="fa-solid fa-brain"></i> AI Confidence: ${confidencePercent}%
                                     </span>
-                                    <span style="font-size:0.75rem; color:#9ca3af;">
-                                        ${new Date(observation.timestamp).toLocaleDateString()}
+                                    <span style="font-size:0.8rem; color:#9ca3af;">
+                                        <i class="fa-solid fa-calendar"></i> ${new Date(observation.timestamp).toLocaleDateString()}
                                     </span>
                                 </div>
                             </div>
@@ -1137,126 +1138,96 @@
 
         // Local storage for comments (in a real app, this would come from backend)
         let observationComments = {};
-        
+
         async function loadComments(observationId) {
             const commentsContainer = document.getElementById('commentsContainer');
-            commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading comments...</div>';
-            
+            commentsContainer.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Getting discussions...</div>';
+
             try {
-                // Initialize comments array for this observation if it doesn't exist
-                if (!observationComments[observationId]) {
-                    observationComments[observationId] = [];
+                const res = await fetch(`${API_BASE}/observations/${observationId}/comments`);
+                if (res.ok) {
+                    const comments = await res.json();
+                    renderComments(comments);
+                } else {
+                    throw new Error("Failed to fetch comments");
                 }
-                
-                renderComments(observationComments[observationId]);
             } catch (e) {
                 console.error('Error loading comments:', e);
-                commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444;">Failed to load comments</div>';
+                commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load comments.</div>';
             }
         }
 
         function renderComments(comments) {
             const commentsContainer = document.getElementById('commentsContainer');
-            
-            if (comments.length === 0) {
-                commentsContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No comments yet. Be the first to comment!</div>';
+
+            if (!comments || comments.length === 0) {
+                commentsContainer.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 40px;">No comments yet. Start the conversation!</div>';
                 return;
             }
-            
+
             commentsContainer.innerHTML = comments.map(comment => `
-                <div style="background: rgba(240, 253, 244, 0.8); border-radius: 12px; padding: 15px; margin-bottom: 15px; border-left: 3px solid var(--fern-green);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div style="font-weight: 600; color: var(--emerald-deep);">
-                            <i class="fa-solid fa-user" style="margin-right: 8px;"></i>
-                            ${comment.user}
+                <div style="background: white; border-radius: 16px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(16, 185, 129, 0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-weight: 700; color: var(--emerald-deep); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 32px; height: 32px; background: var(--leaf-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--fern-green);">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            ${comment.userId || comment.user || 'Anonymous'}
                         </div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); background: var(--leaf-pale); padding: 4px 10px; border-radius: 20px;">
                             ${new Date(comment.timestamp).toLocaleDateString()}
                         </div>
                     </div>
-                    <div style="color: var(--text-dark); line-height: 1.5;">
-                        ${comment.text}
+                    <div style="color: var(--text-dark); line-height: 1.6; font-size: 0.95rem; padding-left: 40px;">
+                        ${comment.comment || comment.text}
                     </div>
                 </div>
             `).join('');
+
+            // Scroll to bottom
+            commentsContainer.scrollTop = commentsContainer.scrollHeight;
         }
 
         async function addComment() {
             const observationId = document.getElementById('commentObservationId').value;
             const commentText = document.getElementById('commentInput').value.trim();
-            
+            const postBtn = event.target;
+
             if (!commentText) {
                 alert('Please enter a comment');
                 return;
             }
-            
-            // Allow all users to post comments (anonymous or logged-in)
+
+            const originalBtnText = postBtn.innerText;
+            postBtn.innerText = "Posting...";
+            postBtn.disabled = true;
+
             const userName = currentUser ? currentUser.userDetails : 'Anonymous User';
-            
+
             try {
-                // Use Logic App for ADD COMMENT (Hybrid Architecture)
-                const response = await fetch(LOGIC_APP_COMMENTS_URL, {
+                const response = await fetch(`${API_BASE}/observations/${observationId}/comments`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         observationId: observationId,
                         userId: userName,
-                        comment: commentText,
-                        timestamp: new Date().toISOString()
+                        comment: commentText
                     })
                 });
-                
+
                 if (response.ok) {
                     document.getElementById('commentInput').value = '';
-                    
-                    // Store comment locally for immediate display
-                    const newComment = {
-                        id: Date.now().toString(),
-                        user: userName,
-                        text: commentText,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    // Initialize comments array if needed
-                    if (!observationComments[observationId]) {
-                        observationComments[observationId] = [];
-                    }
-                    
-                    // Add new comment
-                    observationComments[observationId].push(newComment);
-                    
-                    // Refresh comments display
-                    renderComments(observationComments[observationId]);
-                    
-                } else if (response.status === 401) {
-                    // Handle unauthorized access - still store locally
-                    console.error('Unauthorized access to comments endpoint');
-                    
-                    // Store comment locally even if backend fails
-                    const newComment = {
-                        id: Date.now().toString(),
-                        user: userName,
-                        text: commentText,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    if (!observationComments[observationId]) {
-                        observationComments[observationId] = [];
-                    }
-                    
-                    observationComments[observationId].push(newComment);
-                    renderComments(observationComments[observationId]);
-                    
+                    // Reload comments from server to show the new one
+                    await loadComments(observationId);
                 } else {
-                    const errorText = await response.text();
-                    console.error('Comment failed:', errorText);
-                    alert('Failed to post comment');
+                    throw new Error("Failed to post comment");
                 }
             } catch (e) {
                 console.error('Comment error:', e);
-                // Show error in comments section instead of popup
-                const commentsContainer = document.getElementById('commentsContainer');
-                commentsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 10px;">Error posting comment. Please try again.</div>';
+                alert('Failed to post comment. Please try again.');
+            } finally {
+                postBtn.innerText = originalBtnText;
+                postBtn.disabled = false;
             }
         }
 
