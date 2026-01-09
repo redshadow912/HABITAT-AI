@@ -1357,11 +1357,9 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        id: 'comment-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                        id: 'comment-' + Date.now(),
                         observationId: observationId,
-                        userId: currentUser ? currentUser.userDetails : 'guest',
-                        userName: currentUser && (ADMIN_USERS.includes(currentUser.userDetails) || TEST_ADMIN_OVERRIDE) ? 'Park Ranger (Admin)' : 'Guest User',
-                        comment: text,
+                        user: currentUser ? currentUser.userDetails : 'guest', // Changed to match your Logic App
                         text: text,
                         timestamp: new Date().toISOString()
                     })
