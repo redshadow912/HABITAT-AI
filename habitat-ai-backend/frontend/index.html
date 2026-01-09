@@ -1312,6 +1312,8 @@
             const container = document.getElementById('commentsContainer');
             container.innerHTML = '<div class="loading-spinner"><i class="fa-solid fa-spinner"></i> Loading...</div>';
             try {
+                // For loading comments, we'll try the Logic App endpoint with a query parameter 
+                // but since Logic Apps usually trigger on POST, we'll fall back to API_BASE if it's meant for the function
                 const res = await fetch(`${API_BASE}/observations/${observationId}/comments`);
                 if (res.ok) {
                     const comments = await res.json();
@@ -1351,13 +1353,13 @@
             btn.innerText = "Posting...";
 
             try {
-                const res = await fetch(`${API_BASE}/observations/${observationId}/comments`, {
+                const res = await fetch(LOGIC_APP_COMMENTS_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         observationId: observationId,
-                        userId: CURRENT_USER || 'guest',
-                        userName: CURRENT_USER === 'admin' ? 'Park Ranger (Admin)' : 'Guest User',
+                        userId: currentUser ? currentUser.userDetails : 'guest',
+                        userName: currentUser && (ADMIN_USERS.includes(currentUser.userDetails) || TEST_ADMIN_OVERRIDE) ? 'Park Ranger (Admin)' : 'Guest User',
                         comment: text,
                         text: text // Support both field names for flexibility
                     })
