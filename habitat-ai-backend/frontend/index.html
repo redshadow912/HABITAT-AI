@@ -625,8 +625,14 @@
         <div class="feed-panel">
             <div class="header">
                 <h2>Habitat AI</h2>
-                <button class="upload-btn" onclick="openUploadModal()">
-                    <i class="fa-solid fa-camera"></i> Record
+                <button class="icon-btn" onclick="openModal('uploadModal')" title="Upload New Observation">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+                <div style="width: 1px; height: 30px; background: rgba(0,0,0,0.1); margin: 0 5px;"></div>
+
+                <button class="upload-btn" onclick="openStats()"
+                    style="background: white; color: var(--emerald-deep); border: 1px solid var(--emerald-deep); padding: 8px 15px; font-size: 0.85rem;">
+                    <i class="fa-solid fa-chart-pie"></i> Analytics
                 </button>
             </div>
 
@@ -728,16 +734,50 @@
 
             <div class="input-group">
                 <label class="input-label">Add a Comment</label>
-                <textarea id="commentInput" rows="3"
-                    placeholder="Share your thoughts about this observation..."></textarea>
+                <textarea id="newComment" rows="2" placeholder="Share your thoughts..."></textarea>
             </div>
 
             <input type="hidden" id="commentObservationId">
 
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="upload-btn" style="flex: 1;" onclick="addComment()">Post Comment</button>
-                <button class="upload-btn" style="background: #6b7280;" onclick="closeModals()">Close</button>
+            <button class="upload-btn" style="width: 100%;" onclick="addComment()">Post Comment</button>
+            <button class="upload-btn" style="background: #6b7280; margin-top: 10px;"
+                onclick="closeModals()">Close</button>
+        </div>
+    </div>
+
+    <!-- ANALYTICS MODAL -->
+    <div class="modal" id="statsModal">
+        <div class="modal-box" style="width: 600px;">
+            <h3 style="color:var(--emerald-deep); margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-chart-simple"></i> Biodiversity Dashboard
+            </h3>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                <div
+                    style="background: rgba(16, 185, 129, 0.1); padding: 15px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Total Sightings
+                    </div>
+                    <div id="statTotal" style="font-size: 2rem; font-weight: 800; color: var(--emerald-deep);">0</div>
+                </div>
+                <div
+                    style="background: rgba(245, 158, 11, 0.1); padding: 15px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Rare
+                        Discoveries</div>
+                    <div id="statRare" style="font-size: 2rem; font-weight: 800; color: #d97706;">0</div>
+                </div>
             </div>
+
+            <h4 style="font-size: 0.9rem; color: var(--text-dark); margin-bottom: 15px;">Species Distribution</h4>
+            <div id="speciesBarChart" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Bars injected by JS -->
+            </div>
+
+            <div
+                style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+                Real-time data powered by Habitat AI Cognitive Services
+            </div>
+            <button class="upload-btn" style="background: #6b7280; width: 100%; margin-top: 20px;"
+                onclick="closeModals()">Close</button>
         </div>
     </div>
 
@@ -1372,6 +1412,104 @@
                 postBtn.innerText = originalBtnText;
                 postBtn.disabled = false;
             }
+        }
+
+        async function submitComment() {
+            const observationId = document.getElementById('commentObservationId').value;
+            const text = document.getElementById('newComment').value;
+
+            if (!text.trim()) {
+                alert('Please enter a comment');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/observations/${observationId}/comments`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        text: text,
+                        userId: CURRENT_USER,
+                        userName: CURRENT_USER === 'admin' ? 'Park Ranger (Admin)' : 'Guest User'
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById('newComment').value = '';
+                    loadComments(observationId); // Reload comments list
+                } else {
+                    alert('Failed to post comment');
+                }
+            } catch (e) {
+                console.error('Comment error:', e);
+                alert('Error posting comment');
+            }
+        }
+
+        // ANALYTICS LOGIC
+        function openStats() {
+            document.getElementById('statsModal').style.display = 'flex';
+            calculateAndRenderStats();
+        }
+
+        function calculateAndRenderStats() {
+            // 1. Total Sightings
+            document.getElementById('statTotal').innerText = allObservations.length;
+
+            // 2. Rare Discoveries (Confidence > 90%)
+            const rareCount = allObservations.filter(o => (o.aiData?.confidence || 0) >= 0.9).length;
+            document.getElementById('statRare').innerText = rareCount;
+
+            // 3. Species Distribution Logic
+            const speciesMap = {};
+            allObservations.forEach(obs => {
+                // Use the species field, or extract first word of description
+                const name = obs.aiData?.species || (obs.aiData?.description || "Unknown").split(' ')[0];
+                const cleanName = name.replace(/[^\w\s]/gi, '').trim();
+                if (cleanName) {
+                    speciesMap[cleanName] = (speciesMap[cleanName] || 0) + 1;
+                }
+            });
+
+            // Convert to array and sort
+            const sortedSpecies = Object.entries(speciesMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5); // Top 5
+
+            // Render Chart
+            const chartContainer = document.getElementById('speciesBarChart');
+            chartContainer.innerHTML = '';
+
+            if (sortedSpecies.length === 0) {
+                chartContainer.innerHTML = '<div style="text-align:center; color:#9ca3af;">No data to analyze yet.</div>';
+                return;
+            }
+
+            const maxVal = sortedSpecies[0][1];
+
+            sortedSpecies.forEach(([name, count]) => {
+                const widthPercent = (count / maxVal) * 100;
+
+                // Color variation based on count
+                const barColor = count === maxVal ? '#10b981' : '#34d399';
+
+                const row = document.createElement('div');
+                row.style.marginBottom = '8px';
+                row.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; color:var(--text-dark);">
+                        <strong>${name}</strong>
+                        <span>${count}</span>
+                    </div>
+                    <div style="width:100%; background:#f3f4f6; border-radius:4px; height:8px; overflow:hidden;">
+                        <div style="width:0%; background:${barColor}; height:100%; transition:width 1s ease-out;" id="bar-${name}"></div>
+                    </div>
+                `;
+                chartContainer.appendChild(row);
+
+                // Animate the bar
+                setTimeout(() => {
+                    document.getElementById(`bar-${name}`).style.width = `${widthPercent}%`;
+                }, 100);
+            });
         }
 
         function openUploadModal() { document.getElementById('uploadModal').style.display = 'flex'; }
