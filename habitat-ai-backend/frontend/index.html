@@ -822,18 +822,33 @@
             return observation.userId === currentUser.userDetails;
         }
 
-        // AUTH CHECK
+        // DEMO-FRIENDLY AUTH - Toggles between Guest and Admin
+        let isDemoAdmin = false;
         async function checkUser() {
+            // First try real Azure Auth
             try {
                 const res = await fetch('/.auth/me');
-                const data = await res.json();
-                if (data.clientPrincipal) {
-                    currentUser = data.clientPrincipal;
-                    document.getElementById('userLabel').innerText = currentUser.userDetails;
-                    document.body.classList.add('logged-in');
-                    document.getElementById('loginBtn').onclick = () => window.location.href = '/.auth/logout';
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.clientPrincipal) {
+                        currentUser = data.clientPrincipal;
+                        document.getElementById('userLabel').innerText = currentUser.userDetails;
+                        return;
+                    }
                 }
             } catch (e) { }
+
+            // Fallback: Set up the toggle for the demo
+            currentUser = isDemoAdmin ? { userDetails: 'admin@habitat.com' } : { userDetails: 'Guest' };
+            document.getElementById('userLabel').innerText = isDemoAdmin ? 'Park Ranger' : 'Guest';
+
+            // Wire up the button to toggle instead of redirecting
+            document.getElementById('loginBtn').onclick = (e) => {
+                e.preventDefault();
+                isDemoAdmin = !isDemoAdmin;
+                checkUser();
+                renderData(allObservations); // Refresh UI to show/hide admin buttons
+            };
         }
 
         // LOAD DATA from Logic App
