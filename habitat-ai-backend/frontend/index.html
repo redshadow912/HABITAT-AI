@@ -1260,7 +1260,7 @@
         async function openComments(observationId) {
             document.getElementById('commentObservationId').value = observationId;
             document.getElementById('commentsModal').style.display = 'flex';
-            document.getElementById('commentInput').value = '';
+            document.getElementById('newComment').value = '';
 
             // Load observation details
             await loadObservationDetails(observationId);
@@ -1414,7 +1414,7 @@
             }
         }
 
-        async function submitComment() {
+        async function addComment() {
             const observationId = document.getElementById('commentObservationId').value;
             const text = document.getElementById('newComment').value;
 
